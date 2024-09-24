@@ -101,7 +101,7 @@ function create_32nd_note_slices(array, bpm, audioDuration) {
 
         // Averaging the values of the slices
         let avg_array_slice = [];
-        for (let i = 0; i < array[0].length; i++) {  
+        for (let i = 0; i < array[0].length; i++) {
             let sum = 0;
             for (let j = 0; j < array_slice.length; j++) {
                 sum += array_slice[j][i];
@@ -114,19 +114,19 @@ function create_32nd_note_slices(array, bpm, audioDuration) {
         current_time += seconds_per_32nd_note;
     }
 
-    return new_array; 
+    return new_array;
 }
 
 function roundUpArrayValues(arr) {
     for (let i = 0; i < arr.length; i++) {
-      for (let j = 0; j < arr[i].length; j++) {
-        if (arr[i][j] < 0.000001) {
-          arr[i][j] = 0.000001;
+        for (let j = 0; j < arr[i].length; j++) {
+            if (arr[i][j] < 0.000001) {
+                arr[i][j] = 0.000001;
+            }
         }
-      }
     }
     return arr;
-  }
+}
 
 logSpectrogram.array().then(array => {
 
@@ -152,7 +152,7 @@ logSpectrogram.array().then(array => {
     const minVal = Math.min(...flattened);
     const maxVal = Math.max(...flattened);
 
-    const normalized_array = sliced_array.map(row => 
+    const normalized_array = sliced_array.map(row =>
         row.map(value => (value - minVal) / (maxVal - minVal))
     );
 

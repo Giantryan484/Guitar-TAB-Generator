@@ -1,6 +1,7 @@
 import numpy as np
 import mido
 
+
 # reads proprietary MIDI format (A series of message-time pairings. Seems terribly inefficient for being such a widespread format.)
 def load_midi(file_path):
     midi_file = mido.MidiFile(file_path)
@@ -17,13 +18,14 @@ def load_midi(file_path):
 
     return messages_with_time
 
+
 # converts proprietary MIDI format to (note, note_start, note_end)
 def get_note_periods(messages_with_time):
     note_periods = []
     notes_on = {}
 
     for time, message in messages_with_time:
-        if message.type == 'note_on' and message.velocity > 0:
+        if message.type == "note_on" and message.velocity > 0:
             note_periods.append((message.note, time, time))
             # if message.note not in notes_on:
             #     notes_on[message.note] = []
@@ -40,6 +42,7 @@ def get_note_periods(messages_with_time):
 
     return note_periods
 
+
 # converts note_periods into an indexed dictionary
 def create_note_dict(note_periods):
     note_dict = {}
@@ -51,15 +54,16 @@ def create_note_dict(note_periods):
 
     return note_dict
 
+
 # create one-hot encoded array of note-starts (if any) for a single 32nd-note slice
 def get_notes_in_32nd_period(note_dict, start_time, end_time):
     notes_playing = set()
-    
+
     for note_info in note_dict.values():
         note, (note_start, note_end) = note_info
-        
+
         # if note beginning is in this period, mark it.
-        if note_start == start_time: # and note_start <= end_time:
+        if note_start == start_time:  # and note_start <= end_time:
             notes_playing.add(note)
 
     # convert into a one-hot encoded array for notes 40 to 88
@@ -69,6 +73,7 @@ def get_notes_in_32nd_period(note_dict, start_time, end_time):
             one_hot_array[note - 40] = 1
 
     return one_hot_array
+
 
 # create one-hot encoded arrays for all 32nd-note periods
 def get_all_32nd_note_periods(note_dict, start_time, end_time, period_duration):
@@ -83,12 +88,13 @@ def get_all_32nd_note_periods(note_dict, start_time, end_time, period_duration):
 
     return periods
 
+
 # creates tensors representing note-beginnings in every 32nd note period of the MIDI.
 def create_midi_tensors(file_path):
     messages_with_time = load_midi(file_path)
     note_periods = get_note_periods(messages_with_time)
     note_dict = create_note_dict(note_periods)
-        
+
     one_hot_encoded_periods = get_all_32nd_note_periods(note_dict, 0, 8, 0.0625)
-    
+
     return np.array(one_hot_encoded_periods)
