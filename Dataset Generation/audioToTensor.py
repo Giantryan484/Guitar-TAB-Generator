@@ -6,9 +6,9 @@ import os
 
 # uses js libraries for spectrogram generation (because eventually the data input will be made entirely in js)
 def create_spectrogram_with_js(wav_file):
-    output_json_path = './Data Generation/output_spectrogram.json' 
-    # js_script_path = './Data Generation/process_audio.js'
-    js_script_path = './Data Generation/tf_audio_processing.js'
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_json_path = os.path.join(current_dir, 'output_spectrogram.json')
+    js_script_path = os.path.join(current_dir, 'tf_audio_processing.js')
     subprocess.run(['node', js_script_path, wav_file, output_json_path], check=True)
     with open(output_json_path, 'r') as json_file:
         spectrogram_data = json.load(json_file)
@@ -57,4 +57,4 @@ def create_amplitude_tensors(wav_file, bpm):
 
     # return avg_slices_array
 
-create_amplitude_tensors("/Users/ryanmccormick/Downloads/Code/TF FIles for Chatgpt/advancedWAVs/melodic-test_midi--StrixGuitarPack-5.wav", 120)
+# create_amplitude_tensors("/Users/ryanmccormick/Downloads/Code/TF FIles for Chatgpt/advancedWAVs/melodic-test_midi--StrixGuitarPack-5.wav", 120)
