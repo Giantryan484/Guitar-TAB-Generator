@@ -156,6 +156,9 @@ logSpectrogram.array().then(array => {
         row.map(value => (value - minVal) / (maxVal - minVal))
     );
 
+    // const transposed_array = normalized_array[0].map((_, colIndex) => normalized_array.map(row => row[colIndex]));
+    // const reversed_array = transposed_array.reverse();
+
     fs.writeFileSync(outputJsonPath, JSON.stringify(normalized_array));
     // console.log('STFT data saved to', outputJsonPath);
 });

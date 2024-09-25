@@ -3,6 +3,8 @@ import midiToTensor
 import tensorflow as tf
 import numpy as np
 import os
+import matplotlib.pyplot as plt
+
 
 
 def build_tensors_one_file(wav, midi, bpm):
@@ -15,17 +17,25 @@ def build_tensors_one_file(wav, midi, bpm):
         return []
 
     master_list = []
-    for i in range(len(midi_list)):
-        audio_slice = amplitudes_list[
-            i : i + 8
-        ]  # input size 128 x 8, covers one quarter note
-        midi_slice = midi_list[i : i + 8]
-        # midi_slice = midi_list
+    for i in range(len(midi_list) - 31):
+        audio_slice = amplitudes_list[i : i + 32]  # input size 128 x 32, covers one quarter note
+        midi_slice = midi_list[i : i + 32]  # output size 49 x 32
+        
+        # Convert to float32 to ensure correct type
+        # Data is incorrectly shaped!!!! fit it!
+        
+        # audio_slice = np.array(audio_slice)[::-1].T[:, ::-1].astype(np.float32)  # Shape: (32, 128)
+        # midi_slice = np.array(midi_slice)[::-1].T[:, ::-1].astype(np.float32)  # Shape: (32, 49)
+        
+        audio_slice = np.array(audio_slice).astype(np.float32)  # Shape: (32, 128)
+        midi_slice = np.array(midi_slice).astype(np.float32)  # Shape: (32, 49)
+        print(midi_slice.shape)
+        
         master_list.append([audio_slice, midi_slice])
 
     # returns array of this structure:
-    # index 0: 128x8 array representing 8 64th-note slices of the spectrogram (consider changing to 32nds)
-    # index 1: 48x4 array representing one-hot encoded array of MIDI note beginnings.
+    # index 0: 128x32 array representing 8 64th-note slices of the spectrogram (consider changing to 32nds)
+    # index 1: 49x32 array representing one-hot encoded array of MIDI note beginnings.
     return master_list
 
 
@@ -70,8 +80,18 @@ def build_all_tensors():
         wav_file = os.path.join(wav_path, str(i).zfill(6) + ".wav")
         data_for_one_file = build_tensors_one_file(wav_file, midi_file, 120)
         data += data_for_one_file
+        
+    # midi = data[0][1]
+    # plt.figure(figsize=(10, 4))
+    # plt.imshow(midi, aspect='auto', cmap='viridis', origin='lower')
+    # plt.colorbar(label='Amplitude (0 to 1)')
+    # plt.title("MIDI (32 time steps, 49 MIDI Notes)")
+    # plt.xlabel("Time Steps (32)")
+    # plt.ylabel("MIDI Notes (49)")
+    # plt.show()
 
-    write_tfrecord_file(data_file, data)
+    # print(data)
+    write_tfrecord_file(data_file, data[0:1])
 
 
 build_all_tensors()

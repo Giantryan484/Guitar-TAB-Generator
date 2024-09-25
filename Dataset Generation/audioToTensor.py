@@ -60,3 +60,5 @@ def create_amplitude_tensors(wav_file, bpm):
 
 
 # create_amplitude_tensors("/Users/ryanmccormick/Downloads/Code/TF FIles for Chatgpt/advancedWAVs/melodic-test_midi--StrixGuitarPack-5.wav", 120)
+# create_amplitude_tensors("Data/WAVs/000001.wav", 120)
+
