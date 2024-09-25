@@ -29,13 +29,14 @@ def build_tensors_one_file(wav, midi, bpm):
         
         audio_slice = np.array(audio_slice).astype(np.float32)  # Shape: (32, 128)
         midi_slice = np.array(midi_slice).astype(np.float32)  # Shape: (32, 49)
-        print(midi_slice.shape)
+        # print(midi_slice.shape)
         
         master_list.append([audio_slice, midi_slice])
 
     # returns array of this structure:
     # index 0: 128x32 array representing 8 64th-note slices of the spectrogram (consider changing to 32nds)
     # index 1: 49x32 array representing one-hot encoded array of MIDI note beginnings.
+    # print(len(master_list))
     return master_list
 
 
@@ -91,7 +92,9 @@ def build_all_tensors():
     # plt.show()
 
     # print(data)
-    write_tfrecord_file(data_file, data[0:1])
+    # write_tfrecord_file(data_file, data[0:1])
+    print(len(data), "datapoints in dataset.")
+    write_tfrecord_file(data_file, data)
 
 
 build_all_tensors()

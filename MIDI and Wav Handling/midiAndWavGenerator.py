@@ -8,7 +8,7 @@ data_path = os.path.join(parent_dir, "Data")
 midi_path = os.path.join(data_path, "MIDIs")
 wav_path = os.path.join(data_path, "WAVs")
 
-NUM_WAV_MIDI_PAIRS = 1
+NUM_WAV_MIDI_PAIRS = 50
 SOUNDFONT_PATH = os.path.join(current_dir, "Guitars-Universal-V1-5.sf2")
 
 for i in range(1, NUM_WAV_MIDI_PAIRS + 1):
