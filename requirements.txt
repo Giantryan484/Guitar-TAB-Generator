@@ -1,0 +1,6 @@
+tensorflow==2.13.0
+matplotlib
+mido
+music21
+numpy
+Pillow
