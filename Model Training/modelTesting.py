@@ -68,16 +68,31 @@ for spectrogram_batch, midi_batch in dataset.take(1):  # Unpack input and output
     plt.xlabel("Frequency Bins (128)")
     plt.show()
     
+    
+    # MIDI output
+    midi = midi_batch[0].numpy()
+
+    # Remove the extra batch dimension
+    midi = midi.squeeze()
+    
+    plt.figure(figsize=(10, 10))
+    plt.imshow(midi, aspect='auto', cmap='viridis', origin='lower')
+    plt.colorbar(label='Amplitude (0 to 1)')
+    plt.title("MIDI (32 time steps, 49 MIDI Notes)")
+    plt.ylabel("Time Steps (32)")
+    plt.xlabel("MIDI Notes (49)")
+    plt.show()
+    
     # midi = model.predict(spectrogram_data)
     
     # Predict MIDI output
     midi_prediction = model.predict(spectrogram_batch)  # Shape: (1, 32, 49)
 
     # Remove the extra batch dimension
-    midi = midi_prediction[0]  # Shape becomes (32, 49)
+    midi_prediction = midi_prediction[0]  # Shape becomes (32, 49)
     
     plt.figure(figsize=(10, 10))
-    plt.imshow(midi, aspect='auto', cmap='viridis', origin='lower')
+    plt.imshow(midi_prediction, aspect='auto', cmap='viridis', origin='lower')
     plt.colorbar(label='Amplitude (0 to 1)')
     plt.title("MIDI (32 time steps, 49 MIDI Notes)")
     plt.ylabel("Time Steps (32)")

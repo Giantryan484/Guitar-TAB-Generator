@@ -18,7 +18,7 @@ def build_tensors_one_file(wav, midi, bpm):
 
     master_list = []
     for i in range(len(midi_list) - 31):
-        audio_slice = amplitudes_list[i : i + 32]  # input size 128 x 32, covers one quarter note
+        audio_slice = amplitudes_list[i : i + 64]  # input size 128 x 32, covers one quarter note
         midi_slice = midi_list[i : i + 32]  # output size 49 x 32
         
         # Convert to float32 to ensure correct type

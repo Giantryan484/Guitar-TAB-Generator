@@ -76,16 +76,16 @@ function reduce_height_logarithmically(array) {
     return new_array;
 }
 
-function create_32nd_note_slices(array, bpm, audioDuration) {
+function create_64th_note_slices(array, bpm, audioDuration) {
     const beats_per_second = bpm / 60;
     const seconds_per_beat = 1 / beats_per_second;
-    const seconds_per_32nd_note = seconds_per_beat / 8;
+    const seconds_per_64th_note = seconds_per_beat / 16;
     let new_array = [];
     let current_time = 0;
 
     while (current_time < audioDuration) {
         let lower_bound = Math.floor((current_time / audioDuration) * array.length);
-        let upper_bound = Math.floor(((current_time + seconds_per_32nd_note) / audioDuration) * array.length);
+        let upper_bound = Math.floor(((current_time + seconds_per_64th_note) / audioDuration) * array.length);
 
         // Ensure upper_bound does not exceed the length of the array
         if (upper_bound >= array.length) {
@@ -111,7 +111,7 @@ function create_32nd_note_slices(array, bpm, audioDuration) {
         }
 
         new_array.push(avg_array_slice);
-        current_time += seconds_per_32nd_note;
+        current_time += seconds_per_64th_note;
     }
 
     return new_array;
@@ -131,18 +131,18 @@ function roundUpArrayValues(arr) {
 logSpectrogram.array().then(array => {
 
     const shortened_array = reduce_height_logarithmically(array);
-    const array_32nds = create_32nd_note_slices(shortened_array, 120, audioDuration);
-    // console.log(array_32nds.length / 32);
+    const array_64ths = create_64th_note_slices(shortened_array, 120, audioDuration);
+    // console.log(array_64ths.length / 32);
     // const shortened_array = result[0];
     // const master_length = result[1];
     // const shortened_array = array;
 
 
     // rearrange to traditional spectrogram format; `array.T[::-1]` in python
-    // const transposed_array = array_32nds[0].map((_, colIndex) => array_32nds.map(row => row[colIndex]));
+    // const transposed_array = array_64ths[0].map((_, colIndex) => array_64ths.map(row => row[colIndex]));
     // const reversed_array = transposed_array.reverse();
     // const truncated_array = reversed_array.slice(-128);
-    const sliced_array = array_32nds.map(row => row.slice(0, 128));
+    const sliced_array = array_64ths.map(row => row.slice(0, 128));
 
     // round up to 10e-6 (so normalization works better)
     const rounded_array = roundUpArrayValues(sliced_array);

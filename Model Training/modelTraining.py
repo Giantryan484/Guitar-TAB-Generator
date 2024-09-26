@@ -18,7 +18,7 @@ def parse_tfrecord_fn(example):
     # print(f"Raw output shape: {output_image.shape}")
     
     # # Reshape the tensors to their expected shapes
-    input_image = tf.reshape(input_image, [32, 128])  # Shape: (32, 128)
+    input_image = tf.reshape(input_image, [64, 128])  # Shape: (32, 128)
     output_image = tf.reshape(output_image, [32, 49])  # Shape: (32, 49)
 
     # Add a channel dimension to the input for compatibility with the CNN
@@ -80,7 +80,7 @@ dataset = load_dataset(dataset_path, batch_size)
 #     plt.show()
 
 # Model Structure:
-input_layer = tf.keras.layers.Input(shape=(32, 128, 1))  # 32 time steps, 128 frequency bins, 1 channel
+input_layer = tf.keras.layers.Input(shape=(64, 128, 1))  # 32 time steps, 128 frequency bins, 1 channel
 
 cnn = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(input_layer)  # (None, 32, 128, 32)
 cnn = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 16, 64, 32)
@@ -95,13 +95,13 @@ model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
 model.compile(optimizer='adam', loss='categorical_crossentropy') # Output is onehot encoded classifications, so categorical crossentropy is most appropriate, or so I think
 
 
-# print(model.summary())
+print(model.summary())
 # for spectrogram_batch, labels_batch in dataset.take(1):
 #     print(f"Input batch shape: {spectrogram_batch.shape}")
 #     print(f"Label batch shape: {labels_batch.shape}")
 
 # Training parameters
-epochs = 50  # Number of epochs to train the model
+epochs = 35  # Number of epochs to train the model
 # steps_per_epoch = 80  # Number of batches per epoch (you can adjust this based on your dataset size)
 
 # print(sum(1 for _ in tf.data.TFRecordDataset(dataset_path)))
