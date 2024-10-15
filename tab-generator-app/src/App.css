@@ -12,12 +12,12 @@
     --button-text-color: #FFECD1;
     --button-color: #FF7D00; */
     --primary-color: #3498db;
-    --secondary-color: #2ecc71;
+    --secondary-color: #379683;  /* #2ecc71 */
     --background-color: #333333;
-    --button-hover-color: #05386B;
+    --button-hover-color: #2f7e6e; /* #379683 */
     --button-text-color: white;
     --button-color: #379683;
-    --text-color: #5CDB95;
+    --text-color: white;
 }
 
 body {

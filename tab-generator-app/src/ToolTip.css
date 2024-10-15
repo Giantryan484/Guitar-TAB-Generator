@@ -15,6 +15,7 @@
     transform: translatey(-24px);
     background-color: #333;
     color: #fff;
+    text-align: left;
     padding: 5px;
     border-radius: 3px;
     /* white-space: nowrap; */

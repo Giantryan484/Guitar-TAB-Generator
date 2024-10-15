@@ -1,8 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import TempoTapper from './TempoTapper';
 import Tooltip from './ToolTip';
 import * as tf from '@tensorflow/tfjs';
 import './TABGenerator.css';
+import LoadingIcon from './LoadingIcon';
+import Dropdown from './Dropdown';
 
 // This component has waaaaay too much functionality for React. But I don't have time to refactor it.
 function TABGenerator() {
@@ -10,14 +12,29 @@ function TABGenerator() {
     const [spectrogramUrl, setSpectrogramUrl] = useState('');
     const [waveformUrl, setWaveformUrl] = useState('');
     const [ML_Inputs, setML_Inputs] = useState('');
+    const [BPM, setBPM] = useState(120.0);
+    const [estimatedBPM, setEstimatedBPM] = useState(false);
+    const [exampleFile, setExampleFile] = useState('');
+    const [fileName, setFileName] = useState('');
     const audioRef = useRef(null);
     const [audioLoaded, setAudioLoaded] = useState(false);
     const [tempoType, setTempoType] = useState(true);
 
+    useEffect(() => {
+        if (exampleFile) {
+          setFile(true);
+          setFileName(exampleFile);
+          audioRef.current.src = exampleFile;
+          console.log(exampleFile);
+        }
+      }, [exampleFile]);
+
     const handleFileChange = (event) => {
         setFile(event.target.files[0]);
+        setFileName(event.target.files[0].name);
         const audioUrl = URL.createObjectURL(event.target.files[0]);
         audioRef.current.src = audioUrl;
+        handleUpload();
     };
 
     // --- Spectrogram helper Functions (copied from ./Dataset Generation/tf_audio_processing.js) ---
@@ -227,7 +244,7 @@ function TABGenerator() {
 
         // Do the STFT
         const frameLength = 4096;
-        const frameStep = 512;
+        const frameStep = 256;
         const stft = tf.signal.stft(audioTensor, frameLength, frameStep);
         const spectrogram = stft.abs();
 
@@ -237,7 +254,7 @@ function TABGenerator() {
         const array = await logSpectrogram.array();
 
         // Preprocess spectrogram image for display to the user
-        const shortened_array = await reduce_height_logarithmically(array, 128);
+        const shortened_array = await reduce_height_logarithmically(array, 400);
         const rounded_array = await roundUpArrayValues(shortened_array);
         const normalized_array = await normalizeArray(rounded_array);
         const transposed_array = normalized_array[0].map((_, colIndex) => normalized_array.map(row => row[colIndex]));
@@ -254,13 +271,16 @@ function TABGenerator() {
 
         const width = 300;
         const height = 128;
+        canvas.width = width;
+        canvas.height = height;
         const step = Math.ceil(data.length / width); // how far to step for each rectangle
         const amp = height / 2;
 
         // context.fillStyle = 'white'; // white background
         // context.fillRect(0, 0, width, height);
 
-        context.fillStyle = 'rgb(92, 219, 149)'; // Set color
+        // context.fillStyle = 'rgb(92, 219, 149)'; // Set color
+        context.fillStyle = '#379683'; // Set color
 
         // draw amplitudes (creating the waveform manually)
         for (let i = 0; i < width; i++) {
@@ -279,18 +299,22 @@ function TABGenerator() {
     };
 
     const handleUpload = async () => {
+        await setSpectrogramUrl('');
+        await setWaveformUrl('');
+
         const arrayBuffer = await fetchAudioAsArrayBuffer(audioRef.current.src);
         const audio = new (window.AudioContext || window.webkitAudioContext)();
         const decodedData = await audio.decodeAudioData(arrayBuffer);
         const data = decodedData.getChannelData(0);
 
-        console.log(data.length);
+        // console.log(data.length);
 
         const spectrogram = await createSpectrogramImage(data);
         const waveform = await createWaveformImage(data);
 
         setSpectrogramUrl(spectrogram);
         setWaveformUrl(waveform);
+        setEstimatedBPM(120.00);
         // setML_Inputs(createSpectrogramInput(array, bpm, audioDuration));
     };
 
@@ -298,24 +322,47 @@ function TABGenerator() {
         setAudioLoaded(true);
     };
 
+    const handleBPM = (e) => {
+        setBPM(e.target.value);
+      };
+    
+
     return (
         <div className='container'>
             <div className='center-column'>
                 <h1 className='title'>Guitar TAB Generator</h1>
-                <p>This is an interactive demo that uses a Convolutional Neural Network to identify notes in audio of a solo guitar. Use it to learn your favorite guitar melodies!</p>
-                <p>For a detailed overview of how this works and how I developed it, visit the <span href="https://github.com/Giantryan484/Guitar-TAB-Generator">GitHub Repo</span></p>
-                <div className='header'><h2>Upload Audio File <Tooltip message={'This should be audio of only guitar playing. Other instruments (drums, vocals, bass) could throw off my model. The accepted file formats are .wav, .mp3, .ogg, and .flac'} /></h2></div>
+                <p>This is an interactive demo that uses a Convolutional Neural Network to create playable TABS from audio of a solo guitar. Use it to learn your favorite guitar melodies!</p>
+                <img
+                    src={"demo_image(1).png"}
+                    alt='waveform being transformed into TABs'
+                    // className='audio-image'
+                    style={{
+                        width: "700px",
+                        height: "128px"
+                    }}
+                />
+                <p>For a detailed overview of how this works and how I made it, visit the <a href="https://github.com/Giantryan484/Guitar-TAB-Generator" style={{color: "var(--secondary-color)"}}>GitHub Repo</a></p>
+                <hr/>
+                <div className='header'><h2>Upload Audio File <Tooltip message={'This should be audio of only guitar playing. Other instruments (drums, vocals, bass) could throw off the model. The accepted file formats are .wav, .mp3, .ogg, and .flac'} /></h2></div>
                 <div className='upload-container'>
-                    <input
-                        type='file'
-                        accept='.wav,.mp3,.ogg,.flac'
-                        onChange={handleFileChange}
-                        id='fileInput'
-                        className='hiddenInput'
+                    <div className='button-and-name'>
+                        <input
+                            type='file'
+                            accept='.wav,.mp3,.ogg,.flac'
+                            onChange={handleFileChange}
+                            id='fileInput'
+                            className='hiddenInput'
+                        />
+                        <label htmlFor='fileInput' className='customFileButton'>
+                            Choose File
+                        </label>
+                        <div className='filename'>{fileName}</div>
+                    </div>
+                    <Dropdown  
+                        mainString={"(Or use an example file)"} 
+                        listStrings={["file1.mp3", "file2.wav", "file3.ogg"]} 
+                        setState={setExampleFile}
                     />
-                    <label htmlFor='fileInput' className='customFileButton'>
-                        Choose File
-                    </label>
                     {file && (
                         audioLoaded && (
                             <audio controls src={audioRef.current.src} className="audio-player">
@@ -337,17 +384,23 @@ function TABGenerator() {
                             className='audio-image'
                         />
                     )}
+                    {estimatedBPM && (
+                        <div className='audio-estimates'>
+                            BPM: {estimatedBPM}   Time: 22s 
+                            {/* add duration and estimates bpm */}
+                        </div>
+                    )}
+                    {file && audioLoaded && (
+                        (!waveformUrl || !spectrogramUrl || !estimatedBPM) && (
+                            <LoadingIcon message={"Processing"} subMessage={"(This can take a while for longer files)"}/>
+                        )
+                    )}
                 </div>
-                <button
-                    onClick={handleUpload}
-                    className={`uploadButton ${file ? 'active' : ''}`}
-                    disabled={!file}
-                >
-                    Upload and Generate Spectrogram
-                </button>
+                <hr/>
                 <audio ref={audioRef} onLoadedMetadata={onLoadedMetadata} />
+                <div className='header'><h2>Mark Beats <Tooltip message={'I\'ve had a tool estimate the bpm of your recording, but you can enter a revised one if needed. You can also manually mark time for more precise or customized results.'} /></h2></div>
                 <div className='timing-selector'>
-                    <button onClick={() => setTempoType(false)} className={`timingButton ${!tempoType ? 'active' : ''}`}>Choose a Tempo</button>
+                    <button onClick={() => setTempoType(false)} className={`timingButton ${!tempoType ? 'active' : ''}`}>Use a Set BPM</button>
                     <button onClick={() => setTempoType(true)} className={`timingButton ${tempoType ? 'active' : ''}`}>Mark Measures Manually</button>
                 </div>
                 {tempoType && (
@@ -362,6 +415,19 @@ function TABGenerator() {
                         )
                     )
                 )}
+                {!tempoType && (
+                    <div>
+                    <label className='BPM-label'>Enter a set BPM:</label>
+                    <input
+                      type="number"
+                      step="any"  // This allows decimals
+                      value={BPM}  // Bind the input to the state variable
+                      onChange={handleBPM}  // Update the state when the value changes
+                      className='BPM-input'
+                    />
+                  </div>
+                )}
+                <hr/>
 
             </div>
         </div>
