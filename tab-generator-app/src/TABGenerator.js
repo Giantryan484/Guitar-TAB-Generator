@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import TempoTapper from './TempoTapper';
 import Tooltip from './ToolTip';
+import tf from 'tfjs';
 import './TABGenerator.css';
 
 // This component has waaaaay too much functionality for React. But I don't have time to refactor it.
