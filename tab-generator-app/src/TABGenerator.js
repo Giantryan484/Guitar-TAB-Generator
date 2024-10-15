@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import TempoTapper from './TempoTapper';
 import Tooltip from './ToolTip';
-import tf from 'tfjs';
+import * as tf from '@tensorflow/tfjs';
 import './TABGenerator.css';
 
 // This component has waaaaay too much functionality for React. But I don't have time to refactor it.
@@ -65,9 +65,9 @@ function TABGenerator() {
     }
 
     // reduces the height of the spectrogram to 128 by averaging frequencies into logarithmically-sized buckets
-    async function reduce_height_logarithmically(array) {
+    async function reduce_height_logarithmically(array, num_buckets) {
         const image_height = array[0].length;
-        const num_buckets = 400;
+        // const num_buckets = 400;
         const root = Math.pow(image_height, 1.0 / num_buckets);
         let new_array = [];
 
@@ -127,7 +127,12 @@ function TABGenerator() {
 
     // normalize array between 0-1
     async function normalizeArray(array) {
-        const flattened = array.flat();
+        if (!Array.isArray(array)) {
+            throw new Error("Expected a non-empty 2D array for normalization");
+        }
+        const flattenArray = (arr) => arr.reduce((acc, val) => acc.concat(val), []);
+
+        const flattened = flattenArray(array);
         const minVal = Math.min(...flattened);
         const maxVal = Math.max(...flattened);
 
@@ -135,7 +140,7 @@ function TABGenerator() {
             row.map(value => (value - minVal) / (maxVal - minVal))
         );
 
-        return normalized_array
+        return normalized_array;
     }
 
     // creates a link to a grayscale image from a 2D array of values 0-1
@@ -151,7 +156,7 @@ function TABGenerator() {
         canvas.width = width;
         canvas.height = height;
 
-        const imageData = ctx.createImageData(width, height);
+        const imageData = context.createImageData(width, height);
 
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
@@ -176,11 +181,11 @@ function TABGenerator() {
     async function fetchAudioAsArrayBuffer(url) {
         try {
             const response = await fetch(url);
-    
+
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-    
+
             const arrayBuffer = await response.arrayBuffer();
             return arrayBuffer;
         } catch (error) {
@@ -190,80 +195,70 @@ function TABGenerator() {
 
     const createSpectrogramInput = async (arrayBuffer) => {
         // TODO: take BPM input, or take manual input/create manual function.
-
         const audio = new (window.AudioContext || window.webkitAudioContext)();
 
-        audio.decodeAudioData(arrayBuffer, function (decodedData) {
-            const channelData = decodedData.getChannelData(0);
-            const audioTensor = tf.tensor1d(channelData);
-            const audioDuration = wavData.channelData[0].length / wavData.sampleRate;
+        const decodedData = await audio.decodeAudioData(arrayBuffer);
+        const channelData = decodedData.getChannelData(0);
+        const audioTensor = tf.tensor1d(channelData);
+        const audioDuration = decodedData.duration;
 
-            // Do the STFT
-            const frameLength = 8192;
-            const frameStep = 4096;
-            const stft = tf.signal.stft(audioTensor, frameLength, frameStep);
-            const spectrogram = stft.abs();
+        // Do the STFT
+        const frameLength = 8192;
+        const frameStep = 4096;
+        const stft = tf.signal.stft(audioTensor, frameLength, frameStep);
+        const spectrogram = stft.abs();
 
-            const eps = tf.scalar(Number.EPSILON);  // small constant to avoid log(0)
-            const logSpectrogram = spectrogram.add(eps).log();
+        const eps = tf.scalar(Number.EPSILON);  // small constant to avoid log(0)
+        const logSpectrogram = spectrogram.add(eps).log();
 
-            logSpectrogram.array().then(array => {
+        const array = await logSpectrogram.array();
 
-                // Prepares the spectrogram for input into the CNN
-                const shortened_array = reduce_height_logarithmically(array);
-                const array_64ths = create_64th_note_slices_from_bpm(shortened_array, 120, audioDuration);
-                const rounded_array = roundUpArrayValues(array_64ths);
-                const ML_array = normalizeArray(rounded_array);
+        // Prepares the spectrogram for input into the CNN
+        const shortened_array = await reduce_height_logarithmically(array, 400);
+        const array_64ths = await create_64th_note_slices_from_bpm(shortened_array, 120, audioDuration);
+        const rounded_array = await roundUpArrayValues(array_64ths);
+        const ML_array = await normalizeArray(rounded_array);
 
-                return ML_array
-            });
-        }, function (error) {
-            console.error('Error decoding audio data:', error);
-        });
+        return ML_array
     }
 
-    const createSpectrogramImage = async (arrayBuffer) => {
-        const audio = new (window.AudioContext || window.webkitAudioContext)();
+    const createSpectrogramImage = async (data) => {
+        const audioTensor = tf.tensor1d(data);
 
-        audio.decodeAudioData(arrayBuffer, function (decodedData) {
-            const channelData = decodedData.getChannelData(0);
-            const audioTensor = tf.tensor1d(channelData);
-            const audioDuration = wavData.channelData[0].length / wavData.sampleRate;
+        // Do the STFT
+        const frameLength = 4096;
+        const frameStep = 512;
+        const stft = tf.signal.stft(audioTensor, frameLength, frameStep);
+        const spectrogram = stft.abs();
 
-            // Do the STFT
-            const frameLength = 8192;
-            const frameStep = 4096;
-            const stft = tf.signal.stft(audioTensor, frameLength, frameStep);
-            const spectrogram = stft.abs();
+        const eps = tf.scalar(Number.EPSILON);  // small constant to avoid log(0)
+        const logSpectrogram = spectrogram.add(eps).log();
 
-            const eps = tf.scalar(Number.EPSILON);  // small constant to avoid log(0)
-            const logSpectrogram = spectrogram.add(eps).log();
+        const array = await logSpectrogram.array();
 
-            logSpectrogram.array().then(array => {
-                // Preprocess spectrogram image for display to the user
-                const shortened_array = reduce_height_logarithmically(array);
-                const rounded_array = roundUpArrayValues(shortened_array);
-                const normalized_array = normalizeArray(rounded_array);
-                const transposed_array = normalized_array[0].map((_, colIndex) => normalized_array.map(row => row[colIndex]));
-                const Image_array = transposed_array.reverse();
+        // Preprocess spectrogram image for display to the user
+        const shortened_array = await reduce_height_logarithmically(array, 128);
+        const rounded_array = await roundUpArrayValues(shortened_array);
+        const normalized_array = await normalizeArray(rounded_array);
+        const transposed_array = normalized_array[0].map((_, colIndex) => normalized_array.map(row => row[colIndex]));
+        const Image_array = transposed_array.reverse();
 
-                return Image_array
-            });
-        }, function (error) {
-            console.error('Error decoding audio data:', error);
-        });
+        const url = await generateImageFrom2DArray(Image_array);
+
+        return url;
     }
 
-    const createWaveformImage = async (audioBuffer) => {
+    const createWaveformImage = async (data) => {
         const canvas = document.createElement('canvas'); // don't load in DOM
         const context = canvas.getContext('2d');
 
-        const width = canvas.width;
-        const height = canvas.height;
-
-        const data = audioBuffer.getChannelData(0);
+        const width = 300;
+        const height = 128;
         const step = Math.ceil(data.length / width); // how far to step for each rectangle
         const amp = height / 2;
+
+        // context.fillStyle = 'white'; // white background
+        // context.fillRect(0, 0, width, height);
 
         context.fillStyle = 'rgb(92, 219, 149)'; // Set color
 
@@ -280,14 +275,23 @@ function TABGenerator() {
         }
         const url = canvas.toDataURL('image/png');
 
-        return generateImageFrom2DArray(url);
+        return url;
     };
 
     const handleUpload = async () => {
-        const arrayBuffer = fetchAudioAsArrayBuffer(audioRef.current.src);
-        setSpectrogramUrl(createSpectrogramImage(arrayBuffer));
-        setWaveformUrl(createWaveformImage(arrayBuffer));
-        setML_Inputs(createSpectrogramInput(arrayBuffer));
+        const arrayBuffer = await fetchAudioAsArrayBuffer(audioRef.current.src);
+        const audio = new (window.AudioContext || window.webkitAudioContext)();
+        const decodedData = await audio.decodeAudioData(arrayBuffer);
+        const data = decodedData.getChannelData(0);
+
+        console.log(data.length);
+
+        const spectrogram = await createSpectrogramImage(data);
+        const waveform = await createWaveformImage(data);
+
+        setSpectrogramUrl(spectrogram);
+        setWaveformUrl(waveform);
+        // setML_Inputs(createSpectrogramInput(array, bpm, audioDuration));
     };
 
     const onLoadedMetadata = () => {
@@ -298,11 +302,13 @@ function TABGenerator() {
         <div className='container'>
             <div className='center-column'>
                 <h1 className='title'>Guitar TAB Generator</h1>
-                <div className='header'><h2>Upload .WAV File <Tooltip message={'Hi there! this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description. this is a sample description.'} /></h2></div>
+                <p>This is an interactive demo that uses a Convolutional Neural Network to identify notes in audio of a solo guitar. Use it to learn your favorite guitar melodies!</p>
+                <p>For a detailed overview of how this works and how I developed it, visit the <span href="https://github.com/Giantryan484/Guitar-TAB-Generator">GitHub Repo</span></p>
+                <div className='header'><h2>Upload Audio File <Tooltip message={'This should be audio of only guitar playing. Other instruments (drums, vocals, bass) could throw off my model. The accepted file formats are .wav, .mp3, .ogg, and .flac'} /></h2></div>
                 <div className='upload-container'>
                     <input
                         type='file'
-                        accept='audio/wav'
+                        accept='.wav,.mp3,.ogg,.flac'
                         onChange={handleFileChange}
                         id='fileInput'
                         className='hiddenInput'
@@ -316,6 +322,20 @@ function TABGenerator() {
                                 Your browser does not support the audio element.
                             </audio>
                         )
+                    )}
+                    {waveformUrl && (
+                        <img
+                            src={waveformUrl}
+                            alt='Waveform'
+                            className='audio-image'
+                        />
+                    )}
+                    {spectrogramUrl && (
+                        <img
+                            src={spectrogramUrl}
+                            alt='Spectrogram'
+                            className='audio-image'
+                        />
                     )}
                 </div>
                 <button
@@ -342,6 +362,7 @@ function TABGenerator() {
                         )
                     )
                 )}
+
             </div>
         </div>
     );
