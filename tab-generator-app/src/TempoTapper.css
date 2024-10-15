@@ -1,0 +1,184 @@
+.player {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    width: 100%;
+    margin: 20px auto;
+}
+
+.frame {
+    border: 2px solid #202020;
+    border-radius: 16px;
+    border-top-left-radius: 0;
+    padding: 10px;
+    background-color: #252525;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 93vw;
+}
+
+.scrollContainer {
+    overflow-x: auto;
+    white-space: nowrap;
+    width: 100%;
+    border: 2px solid #202020;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    background-color: #252525;
+    overflow-y: hidden;
+    -ms-overflow-style: none;
+    /* for Internet Explorer, Edge */
+    scrollbar-width: none;
+    /* for Firefox */
+}
+
+.scrollContent {
+    margin: 0;
+    position: relative;
+    height: 300px;
+}
+
+.spectrogram {
+    height: 100%;
+    width: auto;
+}
+
+.currentTimeBar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background-color: red;
+}
+
+.tapMarker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background-color: blue;
+    cursor: pointer;
+}
+
+.tapMarker.highlighted {
+    background-color: yellow;
+}
+
+.controls {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    background-color: #202020;
+    border-radius: 7px;
+}
+
+.controlButton {
+    background-color: var(--button-color);
+    color: var(--button-text-color);
+    padding: 3px;
+    border: none;
+    cursor: pointer;
+    margin: 3px;
+    border-radius: 5px;
+    width: 22px;
+}
+
+.controlButton:hover:enabled {
+    background-color: var(--button-hover-color);
+}
+
+.tapButton:active {
+    animation: growShrink 0.1s;
+}
+
+@keyframes growShrink {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.deleteButton {
+    background-color: #d9534f;
+    color: white;
+    width: fit-content;
+    padding: 3px 6px;
+}
+
+.clearButton {
+    padding: 3px 6px;
+    width: fit-content;
+}
+
+.tapModeButton {
+    background-color: #a7c17c;
+}
+
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 10px 20px;
+    border: 2px solid #202020;
+    border-bottom: none;
+    background-color: #252525;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+}
+
+.switch {
+    width: 50px;
+    height: 25px;
+    border-radius: 15px;
+    background-color: #ccc;
+    position: relative;
+    transition: background-color 0.3s;
+    margin: 0 10px;
+}
+
+.switch-on {
+    background-color: var(--button-color);
+}
+
+.switch-off {
+    background-color: var(--button-color);
+}
+
+.switch-circle {
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background-color: white;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: left 0.3s;
+}
+
+.switch-on .switch-circle {
+    left: 27px;
+}
+
+.switch-labels {
+    display: flex;
+    gap: 10px;
+}
+
+.label {
+    color: #000;
+    transition: color 0.3s;
+}
+
+.label.selected {
+    color: var(--button-text-color);
+}
