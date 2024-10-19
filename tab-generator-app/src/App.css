@@ -18,6 +18,7 @@
     --button-text-color: white;
     --button-color: #379683;
     --text-color: white;
+    --disabled: #284842;
 }
 
 body {

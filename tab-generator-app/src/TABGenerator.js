@@ -5,29 +5,35 @@ import * as tf from '@tensorflow/tfjs';
 import './TABGenerator.css';
 import LoadingIcon from './LoadingIcon';
 import Dropdown from './Dropdown';
+import { analyze } from 'web-audio-beat-detector';
+import { processML_Outputs } from './TABGenerationFunctions';
 
 // This component has waaaaay too much functionality for React. But I don't have time to refactor it.
 function TABGenerator() {
     const [file, setFile] = useState(null);
     const [spectrogramUrl, setSpectrogramUrl] = useState('');
     const [waveformUrl, setWaveformUrl] = useState('');
-    const [ML_Inputs, setML_Inputs] = useState('');
     const [BPM, setBPM] = useState(120.0);
     const [estimatedBPM, setEstimatedBPM] = useState(false);
     const [exampleFile, setExampleFile] = useState('');
     const [fileName, setFileName] = useState('');
-    const audioRef = useRef(null);
     const [audioLoaded, setAudioLoaded] = useState(false);
-    const [tempoType, setTempoType] = useState(true);
+    const [tempoType, setTempoType] = useState(false);
+    const [submissionStatus, setSubmissionStatus] = useState(false);
+    const [PdfUrl, setPdfUrl] = useState('');
+    const [tapTimes, setTapTimes] = useState([]);
+    const [isOn, setIsOn] = useState(false);
+    const [loadStatus, setLoadStatus] = useState(["Processing", ""]);
+    const audioRef = useRef(null);
 
     useEffect(() => {
         if (exampleFile) {
-          setFile(true);
-          setFileName(exampleFile);
-          audioRef.current.src = exampleFile;
-          console.log(exampleFile);
+            setFile(true);
+            setFileName(exampleFile);
+            audioRef.current.src = "%PUBLIC_URL%/" + exampleFile;
+            console.log(exampleFile);
         }
-      }, [exampleFile]);
+    }, [exampleFile]);
 
     const handleFileChange = (event) => {
         setFile(event.target.files[0]);
@@ -38,6 +44,71 @@ function TABGenerator() {
     };
 
     // --- Spectrogram helper Functions (copied from ./Dataset Generation/tf_audio_processing.js) ---
+
+    // creates length-64 slices of a given spectrogram array from an array of proportions that denote beats in the audio.
+    async function create_64th_note_slices_from_times_array(array, times, marking_type="quarter", audioDuration) {
+        let new_array = [];
+        let measure_lower_bound = 0;
+        times.push(audioDuration); // adds end of audio as the end of a measure
+        let divisor;
+
+        if (marking_type === "quarter") {
+            divisor = 16; // how many times to divide each time slice
+        } else {
+            divisor = 64;
+        }
+
+        for (let i = 0; i < times.length; i++) {
+            let measure_upper_bound = times[i];// * audioDuration;
+
+            if (!measure_upper_bound) { // skip "undefined"s
+                continue;
+            }
+            
+            let seconds_per_64th_note = (measure_upper_bound - measure_lower_bound) / divisor;
+            let current_time = measure_lower_bound;
+
+            if (measure_upper_bound <= measure_lower_bound) { // avoid infinite loop
+                measure_lower_bound = measure_upper_bound;
+                continue;
+            }
+
+            while (current_time < measure_upper_bound) {
+                let lower_bound = Math.floor((current_time / audioDuration) * array.length);
+                let upper_bound = Math.floor(((current_time + seconds_per_64th_note) / audioDuration) * array.length);
+
+                // Ensure upper_bound does not exceed the length of the array
+                if (upper_bound >= array.length) {
+                    upper_bound = array.length - 1;
+                }
+
+                let array_slice = array.slice(lower_bound, upper_bound + 1);
+
+                // If array_slice is empty (not sure when this will happen, but just in case), use the last available slice
+                if (array_slice.length === 0) {
+                    array_slice = [array[array.length - 1]];
+                }
+
+                // Averaging the values of the slices
+                let avg_array_slice = [];
+                for (let i = 0; i < array[0].length; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < array_slice.length; j++) {
+                        sum += array_slice[j][i];
+                    }
+                    let average_value = sum / array_slice.length;
+                    avg_array_slice.push(average_value);
+                }
+
+                new_array.push(avg_array_slice);
+                current_time += seconds_per_64th_note;
+            }
+
+            measure_lower_bound = measure_upper_bound;
+        }
+
+        return new_array;
+    }
 
     // creates length-64 slices of a given spectrogram array for input into the CNN 
     async function create_64th_note_slices_from_bpm(array, bpm, audioDuration) {
@@ -210,14 +281,20 @@ function TABGenerator() {
         }
     }
 
-    const createSpectrogramInput = async (arrayBuffer) => {
-        // TODO: take BPM input, or take manual input/create manual function.
-        const audio = new (window.AudioContext || window.webkitAudioContext)();
+    // estimate BPM from an audio buffer
+    async function estimateBPM(audioBuffer) {
+        const bpm = await analyze(audioBuffer); // boy do I love libraries that do this stuff for me! Full credit to: https://github.com/chrisguttandin/web-audio-beat-detector
+        return parseFloat(bpm.toFixed(3));
+    }
 
-        const decodedData = await audio.decodeAudioData(arrayBuffer);
-        const channelData = decodedData.getChannelData(0);
-        const audioTensor = tf.tensor1d(channelData);
-        const audioDuration = decodedData.duration;
+    const createSpectrogramInput = async (data, bpm = 120) => {
+        // TODO: take BPM input, or take manual input/create manual function.
+        // const audio = new (window.AudioContext || window.webkitAudioContext)();
+
+        // const decodedData = await audio.decodeAudioData(arrayBuffer);
+        // const channelData = decodedData.getChannelData(0);
+        const audioTensor = tf.tensor1d(data);
+        const audioDuration = data.duration;
 
         // Do the STFT
         const frameLength = 8192;
@@ -232,7 +309,21 @@ function TABGenerator() {
 
         // Prepares the spectrogram for input into the CNN
         const shortened_array = await reduce_height_logarithmically(array, 400);
-        const array_64ths = await create_64th_note_slices_from_bpm(shortened_array, 120, audioDuration);
+
+        let array_64ths;
+
+        if (tempoType) { // NOT bpm
+            let marking_type;
+            if (isOn) {
+                marking_type = "quarter";
+            } else {
+                marking_type = "measure";
+            }
+            array_64ths = await create_64th_note_slices_from_times_array(shortened_array, tapTimes, marking_type, audioDuration);
+        } else {
+            array_64ths = await create_64th_note_slices_from_bpm(shortened_array, bpm, audioDuration);
+        }
+
         const rounded_array = await roundUpArrayValues(array_64ths);
         const ML_array = await normalizeArray(rounded_array);
 
@@ -301,6 +392,13 @@ function TABGenerator() {
     const handleUpload = async () => {
         await setSpectrogramUrl('');
         await setWaveformUrl('');
+        await setEstimatedBPM(null);
+        await setPdfUrl('');
+        // await setML_Inputs(null);
+        // await setML_Outputs(null);
+        // await setPDFBytes(null);
+        await setSubmissionStatus(false);
+        await setTapTimes([]);
 
         const arrayBuffer = await fetchAudioAsArrayBuffer(audioRef.current.src);
         const audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -310,11 +408,15 @@ function TABGenerator() {
         // console.log(data.length);
 
         const spectrogram = await createSpectrogramImage(data);
-        const waveform = await createWaveformImage(data);
-
         setSpectrogramUrl(spectrogram);
+
+        const waveform = await createWaveformImage(data);
         setWaveformUrl(waveform);
-        setEstimatedBPM(120.00);
+
+        const bpm = await estimateBPM(decodedData)
+        setEstimatedBPM(bpm);
+        setBPM(bpm);
+
         // setML_Inputs(createSpectrogramInput(array, bpm, audioDuration));
     };
 
@@ -324,13 +426,78 @@ function TABGenerator() {
 
     const handleBPM = (e) => {
         setBPM(e.target.value);
-      };
-    
+    };
+
+    const runMLModel = async (inputs) => {
+        const len = inputs.length;
+        const master_outputs = [];
+
+        const model = await tf.loadLayersModel('public/tf_model/model.json');
+        console.log("Model loaded successfully.");
+
+        for (let i = 0; i < len; i++) {
+            setLoadStatus(["Running the Model", `Parsing slice ${i + 1}/${len}`]);
+            let input = inputs[i];
+            const tfInput = tf.tensor(input).reshape([64, 128, 1]);
+
+            const output = model.predict(tfInput);
+            const outputArray = output.arraySync()[0];
+            master_outputs.push(outputArray);
+
+            tfInput.dispose();
+            output.dispose();
+        }
+        const values = Array(64 + len - 1).fill(0).map(() => Array(49).fill(0));
+        const counts = Array(64 + len - 1).fill(0).map(() => Array(49).fill(0));
+
+        // aggregation
+        for (let i = 0; i < master_outputs.length; i++) {
+            for (let slice_index = 0; slice_index < master_outputs[i].length; slice_index++) {
+                const slice = master_outputs[i][slice_index];
+                for (let value_index = 0; value_index < slice.length; value_index++) {
+                    values[i + slice_index][value_index] += slice[value_index];
+                    counts[i + slice_index][value_index] += 1;
+                }
+            }
+        }
+
+        const output = values.map((row, i) =>
+            row.map((val, j) => (counts[i][j] === 0 ? 0 : val / counts[i][j]))
+        );
+
+        return output;
+    };
+
+    const handleSubmit = async () => {
+        // iframeRef.current.src = null;
+        await setSubmissionStatus(true);
+
+        setLoadStatus(["Preparing Audio", "This may take a while..."]);
+        const arrayBuffer = await fetchAudioAsArrayBuffer(audioRef.current.src);
+        const audio = new (window.AudioContext || window.webkitAudioContext)();
+        const decodedData = await audio.decodeAudioData(arrayBuffer);
+        const data = decodedData.getChannelData(0);
+
+        await console.log(tapTimes);
+
+        const inputs = await createSpectrogramInput(data, BPM); // requires bpm and spectrogram inputs
+
+        setLoadStatus(["Running the Model", "Initializing..."]);
+        const outputs = await runMLModel(inputs);
+
+        // post processing for outputs?
+
+        setLoadStatus(["Optimizing TABs", "This may take a while..."]);
+        const TABsURL = await processML_Outputs(outputs, fileName);
+
+        setPdfUrl(TABsURL);
+    }
+
 
     return (
         <div className='container'>
             <div className='center-column'>
-                <h1 className='title'>Guitar TAB Generator</h1>
+                <h1 className='title'>Guitar TAB Generator (NOT FUNCTIONAL, check back in a few days and I'll have it done.)</h1>
                 <p>This is an interactive demo that uses a Convolutional Neural Network to create playable TABS from audio of a solo guitar. Use it to learn your favorite guitar melodies!</p>
                 <img
                     src={"demo_image(1).png"}
@@ -341,8 +508,8 @@ function TABGenerator() {
                         height: "128px"
                     }}
                 />
-                <p>For a detailed overview of how this works and how I made it, visit the <a href="https://github.com/Giantryan484/Guitar-TAB-Generator" style={{color: "var(--secondary-color)"}}>GitHub Repo</a></p>
-                <hr/>
+                <p>For a detailed overview of how this works and how I made it, visit the <a href="https://github.com/Giantryan484/Guitar-TAB-Generator" style={{ color: "var(--secondary-color)" }}>GitHub Repo</a></p>
+                <hr />
                 <div className='header'><h2>Upload Audio File <Tooltip message={'This should be audio of only guitar playing. Other instruments (drums, vocals, bass) could throw off the model. The accepted file formats are .wav, .mp3, .ogg, and .flac'} /></h2></div>
                 <div className='upload-container'>
                     <div className='button-and-name'>
@@ -356,11 +523,11 @@ function TABGenerator() {
                         <label htmlFor='fileInput' className='customFileButton'>
                             Choose File
                         </label>
-                        <div className='filename'>{fileName}</div>
+                        <div className='filename' style={{ padding: `${fileName ? "10px" : "0px"}` }}>{fileName}</div>
                     </div>
-                    <Dropdown  
-                        mainString={"(Or use an example file)"} 
-                        listStrings={["file1.mp3", "file2.wav", "file3.ogg"]} 
+                    <Dropdown
+                        mainString={"(Or use an example file)"}
+                        listStrings={["file1.mp3", "file2.wav", "file3.ogg"]}
                         setState={setExampleFile}
                     />
                     {file && (
@@ -386,49 +553,75 @@ function TABGenerator() {
                     )}
                     {estimatedBPM && (
                         <div className='audio-estimates'>
-                            BPM: {estimatedBPM}   Time: 22s 
+                            Estimated BPM: {estimatedBPM}&nbsp;&nbsp;&nbsp;&nbsp;Duration: {parseFloat(audioRef.current.duration.toFixed(3))}s
                             {/* add duration and estimates bpm */}
                         </div>
                     )}
                     {file && audioLoaded && (
                         (!waveformUrl || !spectrogramUrl || !estimatedBPM) && (
-                            <LoadingIcon message={"Processing"} subMessage={"(This can take a while for longer files)"}/>
+                            <LoadingIcon message={"Processing"} subMessage={"(This can take a while for longer files)"} />
                         )
                     )}
                 </div>
-                <hr/>
                 <audio ref={audioRef} onLoadedMetadata={onLoadedMetadata} />
-                <div className='header'><h2>Mark Beats <Tooltip message={'I\'ve had a tool estimate the bpm of your recording, but you can enter a revised one if needed. You can also manually mark time for more precise or customized results.'} /></h2></div>
-                <div className='timing-selector'>
-                    <button onClick={() => setTempoType(false)} className={`timingButton ${!tempoType ? 'active' : ''}`}>Use a Set BPM</button>
-                    <button onClick={() => setTempoType(true)} className={`timingButton ${tempoType ? 'active' : ''}`}>Mark Measures Manually</button>
-                </div>
-                {tempoType && (
-                    file && (
-                        audioLoaded && (
-                            spectrogramUrl && (
-                                <div className='tempo-tapper-container'>
-                                    <TempoTapper spectrogramUrl={spectrogramUrl} file={file} audioRef={audioRef} />
-                                    <button className='printButton'>Print</button> {/*Make into separate object eventually*/}
-                                </div>
+                {(file && audioLoaded && waveformUrl && spectrogramUrl && estimatedBPM) && (
+                    <div style={{ width: "100%" }}>
+                        <hr />
+                        <div className='header'><h2>Mark Beats <Tooltip message={'I\'ve had a tool estimate the bpm of your recording, but you can enter a revised one if needed. You can also manually mark time for more precise or customized results.'} /></h2></div>
+                        <div className='timing-selector'>
+                            <button onClick={() => setTempoType(false)} className={`timingButton ${!tempoType ? 'active' : ''}`}>Use a Set BPM</button>
+                            <button onClick={() => setTempoType(true)} className={`timingButton ${tempoType ? 'active' : ''}`}>Mark Measures Manually</button>
+                        </div>
+                        {tempoType && (
+                            file && (
+                                audioLoaded && (
+                                    spectrogramUrl && (
+                                        <div className='tempo-tapper-container'>
+                                            <TempoTapper 
+                                                spectrogramUrl={spectrogramUrl} 
+                                                file={file} 
+                                                audioRef={audioRef} 
+                                                tapTimes={tapTimes}
+                                                setTapTimes={setTapTimes}
+                                                isOn={isOn} 
+                                                setIsOn={setIsOn}
+                                            />
+                                            <button className='submitButton' onClick={handleSubmit}>Submit</button>
+                                            {/* <button className='printButton'>Print</button> Make into separate object eventually */}
+                                        </div>
+                                    )
+                                )
                             )
-                        )
-                    )
+                        )}
+                        {!tempoType && (
+                            <div className='tempo-area'>
+                                <div className='BPM-input-area'>
+                                    <label className='BPM-label'>Enter a BPM:</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={BPM}
+                                        onChange={handleBPM}
+                                        className='BPM-input'
+                                    />
+                                </div>
+                                <button className='submitButton' onClick={handleSubmit}>Submit</button>
+                            </div>
+                        )}
+                    </div>
                 )}
-                {!tempoType && (
-                    <div>
-                    <label className='BPM-label'>Enter a set BPM:</label>
-                    <input
-                      type="number"
-                      step="any"  // This allows decimals
-                      value={BPM}  // Bind the input to the state variable
-                      onChange={handleBPM}  // Update the state when the value changes
-                      className='BPM-input'
-                    />
-                  </div>
+                {submissionStatus && (
+                    <div style={{ width: "100%" }}>
+                        <hr />
+                        <div className='header'><h2>Generate TABs <Tooltip message={'The machine learning model is looking at measure-long slices and figuring out what notes are being played. Later, these notes are converted to TABs using an algorithm that minimizes distance between frets.'} /></h2></div>
+                        {!PdfUrl && (
+                            <LoadingIcon message={loadStatus[0]} subMessage={loadStatus[1]} />
+                        )}
+                        {PdfUrl && (
+                            <iframe src={PdfUrl} width="100%" height="600px" title='pdf-display' />
+                        )}
+                    </div>
                 )}
-                <hr/>
-
             </div>
         </div>
     );

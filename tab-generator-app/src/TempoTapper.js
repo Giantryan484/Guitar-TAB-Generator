@@ -4,9 +4,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay, faStop, faUndo, faTrash, faHandPointer, faPlus } from '@fortawesome/free-solid-svg-icons';
 import './TempoTapper.css';
 
-function TempoTapper({ spectrogramUrl, file, audioRef }) {
+function TempoTapper({ spectrogramUrl, file, audioRef, tapTimes, setTapTimes, isOn, setIsOn}) {
     // useState hooks to manage component state
-    const [tapTimes, setTapTimes] = useState([]); // Stores the times of taps on the spectrogram (eventually will be sent to backend for processing)
+    // const [tapTimes, setTapTimes] = useState([]); // Stores the times of taps on the spectrogram (eventually will be sent to backend for processing)
     const [isPlaying, setIsPlaying] = useState(false); // Tracks whether the audio is currently playing (toggles play/pause icon)
     const [highlightedTap, setHighlightedTap] = useState(null); // Index of the currently highlighted tap (for use in movement and deletion of taps)
     const [spectrogramWidth, setSpectrogramWidth] = useState(0); // Width of the spectrogram image (used when converting mouse placement to times)
@@ -15,7 +15,7 @@ function TempoTapper({ spectrogramUrl, file, audioRef }) {
     const [wasJustStopped, setWasJustStopped] = useState(true); // Indicates if playback was recently stopped (to halt currentTime bar while wav file loads)
     const [isHovered, setIsHovered] = useState(false); // Indicates if the tap button is hovered (so the effect that checks for clicks doesn't activate erroneously)
     const [isAddTapMode, setIsAddTapMode] = useState(false); // Toggles add tap mode (plus button)
-    const [isOn, setIsOn] = useState(false); // Toggle switch for different modes (measure or quarter note)
+    // const [isOn, setIsOn] = useState(false); // Toggle switch for different modes (measure or quarter note)
 
     // useRef hooks to reference DOM elements
     const scrollContentRef = useRef(null); // Reference to the scrollable content area (used to auto scroll while playing)
@@ -28,7 +28,7 @@ function TempoTapper({ spectrogramUrl, file, audioRef }) {
             const currentTime = audioRef.current.currentTime;
             setTapTimes((prevTapTimes) => [...prevTapTimes, currentTime]);
         }
-    }, [isPlaying, audioRef]);
+    }, [isPlaying, audioRef, setTapTimes]);
 
     // Stop audio playback
     const handleStop = useCallback(() => {
@@ -42,7 +42,7 @@ function TempoTapper({ spectrogramUrl, file, audioRef }) {
         const newTapTimes = tapTimes.filter((_, index) => index !== highlightedTap);
         setTapTimes(newTapTimes);
         setHighlightedTap(null);
-    }, [highlightedTap, tapTimes]);
+    }, [highlightedTap, tapTimes, setTapTimes]);
 
     // Handle click on the spectrogram to add a new tap
     const handleSpectrogramClick = (e) => {
@@ -171,7 +171,7 @@ function TempoTapper({ spectrogramUrl, file, audioRef }) {
         const newTapTimes = [...tapTimes];
         newTapTimes[index] = Math.max(0, Math.min(audioRef.current.duration, newTapTimes[index] + amount));
         setTapTimes(newTapTimes);
-    }, [audioRef, tapTimes]);
+    }, [audioRef, tapTimes, setTapTimes]);
 
     // Toggle the state for the switch between marking measures and quarter notes
     const handleToggle = () => {

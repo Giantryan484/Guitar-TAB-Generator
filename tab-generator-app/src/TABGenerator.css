@@ -77,9 +77,13 @@ h2 {
     width: 100px;
 }
 
-.filename {
-    padding: 10px;
+.BPM-input-area {
+    margin: 10px;
 }
+
+/* .filename {
+    padding: 10px;
+} */
 
 .customFileButton:hover {
     background-color: var(--button-hover-color);
@@ -109,18 +113,27 @@ h2 {
     margin-top: 0;
 }
 
-.printButton {
+.submitButton {
     background-color: var(--button-color);
     color: var(--button-text-color);
-    padding: 15px 30px;
+    padding: 10px 20px;
     border: none;
     cursor: pointer;
-    margin-top: 20px;
-    font-size: 1.2em;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    /* font-size: 1.2em; */
 }
 
-.printButton:hover {
+.submitButton:hover {
     background-color: var(--button-hover-color);
+}
+
+.tempo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* justify-content: center; */
+    width: 100%;
 }
 
 .timing-selector {
@@ -143,6 +156,14 @@ h2 {
 
 .timingButton:hover {
     background-color: var(--button-hover-color);
+}
+
+.active {
+    background-color: var(--disabled);
+}
+
+.active:hover {
+    background-color: var(--disabled);
 }
 
 .tempo-tapper-container {

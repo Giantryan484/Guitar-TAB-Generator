@@ -1,8 +1,11 @@
 
 .dropdown-container {
-    position: relative;
-    display: inline-block;
+    /* position: relative;
+    display: inline-block; */
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   
   .dropdown-main {
@@ -19,9 +22,9 @@
   } */
   
   .dropdown-list {
-    position: absolute;
+    /* position: absolute;
     top: 100%;
-    left: 0;
+    left: 0; */
     background-color: #fff;
     border: 1px solid #ddd;
     border-radius: 3px;
