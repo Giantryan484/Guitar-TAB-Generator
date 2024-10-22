@@ -1,12 +1,13 @@
 # Guitar TAB Generator
 
-<div style="text-align: center">
+<div align="center">
     This is the repository for my guitar TAB generation application. Upload an audio file of solo guitar playing, and then watch it be converted into playable TABs. 
     <br/>
-    <img src="Website/tab-generator-app/public/demo_image(1).png" alt="Image of audio file being converted into TABs"/>
+    <img src="tab-generator-app/public/demo_image(1).png" alt="Image of audio file being converted into TABs"/>
     <br/>
     The website is live at <a href="https://tabgenerator.app/">tabgenerator.app</a>, running entirely in your browser. 
-    <br/>NOTICE: currently this website is non-functional because of an unforseen error. My hard deadline for having this functional is November 1, my first college deadline. 
+    <br/><br/>
+    NOTICE: currently this website is non-functional because of an unforseen error. My hard deadline for having this functional is November 1, my first college deadline. 
 </div>
 
 ## About the repository
