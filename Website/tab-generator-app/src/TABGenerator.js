@@ -508,8 +508,8 @@ function TABGenerator() {
     return (
         <div className='container'>
             <div className='center-column'>
-                <h1 className='title'>Guitar TAB Generator (NOT FUNCTIONAL, check back in a few days and I'll have it done.)</h1>
-                <p>Why is it not functional?: Tensorflowjs.converter is resulting in a corrupted model output when I try to convert my trained .keras model to a model.json, so I attempted to use an older version of python and tensorflow. But, upon installing tensorflow again, it said `zsh: illegal hardware instruction`, and now my entire python installation is corrupted, even when I remove all installed libraries. I need to rebuild everything from scratch, so for the next few days I am in dependency hell. I guess this is what I get for not using virtual environments.</p>
+                <h1 className='title'>Guitar TAB Generator (THIS IS NOT COMPLETELY FUNCTIONAL, but you can try out everything until the actual TAB generation section.)</h1>
+                <p>Why is it not functional?: Tensorflowjs.converter is resulting in a corrupted model output when I try to convert my trained .keras model to a model.json, so I attempted to use an older version of python and tensorflow. But, upon installing tensorflow again, it said `zsh: illegal hardware instruction`, and now my entire python installation is corrupted, even when I remove all installed libraries. I need to rebuild everything from scratch, so for the next while I am in dependency hell. I guess this is what I get for not using virtual environments.</p>
                 <p>This is an interactive demo that uses a Convolutional Neural Network to create playable TABS from audio of a solo guitar. Use it to learn your favorite guitar melodies!</p>
                 <img
                     src={"demo_image(1).png"}
