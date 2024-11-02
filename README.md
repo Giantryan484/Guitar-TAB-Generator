@@ -3,7 +3,7 @@
 <div align="center">
     This is the repository for my guitar TAB generation application. Upload an audio file of solo guitar playing, and then watch it be converted into playable TABs. 
     <br/>
-    <img src="tab-generator-app/public/demo_image(1).png" alt="Image of audio file being converted into TABs"/>
+    <img src="Website/tab-generator-app/public/demo_image(1).png" alt="Image of audio file being converted into TABs"/>
     <br/>
     The website is live at <a href="https://tabgenerator.app/">tabgenerator.app</a>, running entirely in your browser. 
     <br/>NOTICE: currently this website is non-functional because of an unforseen error. I apologize, but it may be a week or two before this is funcitonal again.
