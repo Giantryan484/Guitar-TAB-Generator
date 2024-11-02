@@ -1,0 +1,40 @@
+
+.loading-container {
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: fit-content;
+    text-align: center;
+  }
+  
+  .spinner {
+    width: 25px;
+    height: 25px;
+    border: 5px solid rgba(0, 0, 0, 0.1);
+    border-top: 5px solid var(--secondary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .message {
+    margin-top: 20px;
+    font-size: 1.5em;
+    color: var(--text-color);
+  }
+  
+  .sub-message {
+    margin-top: 10px;
+    font-size: 1em;
+    color: var(--text-color);
+  }
