@@ -27,14 +27,13 @@ function TABGenerator() {
     const audioRef = useRef(null);
 
     useEffect(() => {
-        if (exampleFile) {
+        if (exampleFile && !audioRef.current.src.includes(exampleFile)) {
             setFile(true);
             setFileName(exampleFile);
             audioRef.current.src = "/" + exampleFile;
             console.log(exampleFile, "/" + exampleFile);
             handleUpload();
         }
-// eslint-disable-next-line
     }, [exampleFile]);
 
     const handleFileChange = (event) => {
@@ -76,6 +75,7 @@ function TABGenerator() {
             }
 
             while (current_time < measure_upper_bound) {
+                if (current_time >= measure_upper_bound) break;
                 let lower_bound = Math.floor((current_time / audioDuration) * array.length);
                 let upper_bound = Math.floor(((current_time + seconds_per_64th_note) / audioDuration) * array.length);
 
@@ -223,8 +223,18 @@ function TABGenerator() {
         const flattenArray = (arr) => arr.reduce((acc, val) => acc.concat(val), []);
 
         const flattened = flattenArray(array);
-        const minVal = Math.min(...flattened);
-        const maxVal = Math.max(...flattened);
+        let minVal = Infinity;
+        for (const value of flattened) {
+            if (value < minVal) {
+                minVal = value;
+            }
+        }
+        let maxVal = -Infinity;
+        for (const value of flattened) {
+            if (value > maxVal) {
+                maxVal = value;
+            }
+        }
 
         const normalized_array = array.map(row =>
             row.map(value => (value - minVal) / (maxVal - minVal))
