@@ -438,6 +438,13 @@ function TABGenerator() {
         // setEstimatedBPM(bpm);
         // setBPM(bpm);
 
+        await new Promise((resolve) => setTimeout(resolve, 200))
+
+        window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: 'smooth',
+        });
+
         // setML_Inputs(createSpectrogramInput(array, bpm, audioDuration));
     };
 
@@ -492,6 +499,11 @@ function TABGenerator() {
     const handleSubmit = async () => {
         // iframeRef.current.src = null;
         await setSubmissionStatus(true);
+        
+        window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: 'smooth',
+        });
 
         setLoadStatus(["Preparing Audio", "This may take a while..."]);
         const arrayBuffer = await fetchAudioAsArrayBuffer(audioRef.current.src);
