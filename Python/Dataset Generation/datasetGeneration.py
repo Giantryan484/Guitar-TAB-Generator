@@ -5,6 +5,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import random
+import json
 
 
 
@@ -65,6 +66,9 @@ def write_tfrecord_file(filename, image_pairs):
             tf_example = image_pair_to_example(image_pair)
             writer.write(tf_example.SerializeToString())
 
+def write_json_file(filename, image_pairs):
+    with open(filename, "w") as file:
+        json.dump(image_pairs, file)
 
 def build_all_tensors():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -73,16 +77,20 @@ def build_all_tensors():
     midi_path = os.path.join(data_path, "MIDIs")
     wav_path = os.path.join(data_path, "WAVs")
 
-    data_file = os.path.join(data_path, "dataset.tfrecord")
+    # data_file = os.path.join(data_path, "dataset.tfrecord")
+    data_file = os.path.join(data_path, "dataset.json")
     data = []
 
     # go through all midi/wav pairs and create tensors
-    for i in range(1, len(os.listdir(wav_path)) + 1):
+    i = 0
+    for i in range(1, len(os.listdir(wav_path))):
+    # for i in range(1, 2):
         midi_file = os.path.join(midi_path, str(i).zfill(6) + ".mid")
         wav_file = os.path.join(wav_path, str(i).zfill(6) + ".wav")
         data_for_one_file = build_tensors_one_file(wav_file, midi_file, 120)
         data_random_sampled = random.sample(data_for_one_file, 32) # reduce dataset size by randomly sampling. More diverse dataset at lower size that way.
         data += data_random_sampled
+        print("datapoint", i, "completed")
         
     # midi = data[0][1]
     # plt.figure(figsize=(10, 4))
@@ -94,9 +102,12 @@ def build_all_tensors():
     # plt.show()
 
     # print(data)
-    # write_tfrecord_file(data_file, data[0:1])
-    print(len(data), "datapoints in dataset.")
     write_tfrecord_file(data_file, data)
+    print(len(data), "datapoints in dataset.")
+    data = [[datapoint.tolist() for datapoint in audio] for audio in data]
+    # print(type(data), data)
+    write_json_file(data_file, data)
+    # write_tfrecord_file(data_file, data)
 
 
 build_all_tensors()

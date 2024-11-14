@@ -92,7 +92,7 @@ def get_all_32nd_note_periods(note_dict, start_time, end_time, period_duration):
 # creates tensors representing note-beginnings in every 32nd note period of the MIDI.
 def create_midi_tensors(file_path):
     messages_with_time = load_midi(file_path)
-    print(messages_with_time)
+    # print(messages_with_time)
     note_periods = get_note_periods(messages_with_time)
     note_dict = create_note_dict(note_periods)
 
@@ -100,4 +100,4 @@ def create_midi_tensors(file_path):
 
     return np.array(one_hot_encoded_periods)
 
-print("\n".join([str(x) for x in load_midi("/Users/ryanmccormick/Downloads/Code/TAB-Generator/Data/MIDIs/000001.mid")]))
+# print("\n".join([str(x) for x in load_midi("/Users/ryanmccormick/Downloads/Code/TAB-Generator/Data/MIDIs/000001.mid")]))

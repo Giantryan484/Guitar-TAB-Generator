@@ -34,10 +34,8 @@ def generate_random_weighted(filename):
     preset = random.randint(
         0, 70
     )  # change preset to random value so soundfont is randomly selected.
-    # gen_inst.midiProgram = 0
-    # gen_inst.instrumentId = 0
-    # gen_inst.midiChannel = 0
-    # gen_inst.soundfontFn = "/Users/ryanmccormick/Downloads/Code/TAB-Generator/MIDI and Wav Handling/Guitars-Universal-V1.5.sf2"
+    gen_inst.midiProgram = preset
+
     melody.insert(0, gen_inst)
     
     # melody.
@@ -93,10 +91,10 @@ def generate_melody(filename):
     melody.append(clef.TrebleClef())
 
     gen_inst = instrument.Guitar()
-    # preset = random.randint(
-    #     0, 70
-    # )  # change preset to random value so soundfont is randomly selected.
-    # gen_inst.midiProgram = preset
+    preset = random.randint(
+        0, 70
+    )  # change preset to random value so soundfont is randomly selected.
+    gen_inst.midiProgram = preset
     melody.insert(0, gen_inst)
 
     current_time = 0.0
@@ -160,10 +158,10 @@ def generate_chugga(filename):
     melody.append(clef.TrebleClef())
 
     gen_inst = instrument.Guitar()
-    # preset = random.randint(
-    #     0, 70
-    # )  # change preset to random value so soundfont is randomly selected.
-    # gen_inst.midiProgram = preset
+    preset = random.randint(
+        0, 70
+    )  # change preset to random value so soundfont is randomly selected.
+    gen_inst.midiProgram = preset
     melody.insert(0, gen_inst)
 
     current_time = 0.0
@@ -244,10 +242,10 @@ def generate_chords(filename):
     melody.append(clef.TrebleClef())
 
     gen_inst = instrument.Guitar()
-    # preset = random.randint(
-    #     0, 70
-    # )  # change preset to random value so soundfont is randomly selected.
-    # gen_inst.midiProgram = preset
+    preset = random.randint(
+        0, 70
+    )  # change preset to random value so soundfont is randomly selected.
+    gen_inst.midiProgram = preset
     melody.insert(0, gen_inst)
 
     current_time = 0.0
