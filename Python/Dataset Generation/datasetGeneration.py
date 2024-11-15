@@ -124,7 +124,6 @@ build_all_tensors()
 #         convert(file1_path, file2_path, output_path)
 
 # # create the data and save to a TFRecord file
-# image_pairs = build_tensors("/Users/ryanmccormick/Downloads/Code/TF FIles for Chatgpt/advancedWAVs/melodic-test_midi--StrixGuitarPack-5.wav", "/Users/ryanmccormick/Downloads/Code/TF FIles for Chatgpt/advancedMIDIs/melodic-test_midi.mid", 120)
 
 # current_dir = os.path.dirname(os.path.abspath(__file__))
 # parent_dir = os.path.dirname(current_dir)

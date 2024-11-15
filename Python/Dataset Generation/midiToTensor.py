@@ -100,4 +100,3 @@ def create_midi_tensors(file_path):
 
     return np.array(one_hot_encoded_periods)
 
-# print("\n".join([str(x) for x in load_midi("/Users/ryanmccormick/Downloads/Code/TAB-Generator/Data/MIDIs/000001.mid")]))
