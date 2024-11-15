@@ -9,7 +9,6 @@ midi_path = os.path.join(data_path, "MIDIs")
 wav_path = os.path.join(data_path, "WAVs")
 
 NUM_WAV_MIDI_PAIRS = 250
-# SOUNDFONT_PATH = "/Users/ryanmccormick/Downloads/Code/TF FIles for Chatgpt/SoundFonts/StrixGuitarPack-1.sf2"
 SOUNDFONT_PATH = os.path.join(current_dir, "Guitars-Universal-V1.5.sf2")
 # print(SOUNDFONT_PATH)
 
