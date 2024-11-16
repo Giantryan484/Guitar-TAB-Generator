@@ -1,0 +1,16 @@
+{
+  "name": "tfjs_tab_generation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "modelTraining.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "JSONStream": "^1.3.5",
+    "mongodb": "^6.10.0",
+    "tfjs": "^0.6.0"
+  }
+}

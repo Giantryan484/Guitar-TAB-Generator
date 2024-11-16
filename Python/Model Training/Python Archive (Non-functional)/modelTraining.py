@@ -54,45 +54,45 @@ def augment_data(inputs, labels):
     inputs = add_random_hum(inputs, hum_strength=0.02, hum_prob=0.1)
     return inputs, labels
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-data_path = os.path.join(parent_dir, "Data")
-dataset_path = os.path.join(data_path, "dataset.tfrecord")
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# parent_dir = os.path.dirname(current_dir)
+# data_path = os.path.join(parent_dir, "Data")
+# dataset_path = os.path.join(data_path, "dataset.tfrecord")
 
-# load the dataset
-batch_size = 32
-with open("Python/Data/dataset.json", "r") as f:
-    dataset = json.load(f)
+# # load the dataset
+# batch_size = 32
+# with open("Python/Data/dataset.json", "r") as f:
+#     dataset = json.load(f)
 # dataset = load_dataset(dataset_path, batch_size)
 # dataset = dataset.batch(batch_size)
 # dataset = dataset.map(augment_data)
 
 # spectrogram_batch has shape (batch_size, 32, 128, 1)
 
-datapoint = random.sample(dataset, 1)
-spectrogram = np.array(datapoint[0][0]).squeeze()
-midi = np.array(datapoint[0][1]).squeeze()
+# datapoint = random.sample(dataset, 1)
+# spectrogram = np.array(datapoint[0][0]).squeeze()
+# midi = np.array(datapoint[0][1]).squeeze()
 
-print(spectrogram.shape)
+# print(spectrogram.shape)
 
-# Display the 32x128 spectrogram image
-plt.figure(figsize=(10*(64/128), 10))
-plt.imshow(spectrogram, aspect='auto', cmap='viridis', origin='lower')
-plt.colorbar(label='Amplitude (0 to 1)')
-plt.title("Spectrogram (32 time steps, 128 frequency bins)")
-plt.xlabel("Time Steps (32)")
-plt.ylabel("Frequency Bins (128)")
-plt.show()
+# # Display the 32x128 spectrogram image
+# plt.figure(figsize=(10*(64/128), 10))
+# plt.imshow(spectrogram, aspect='auto', cmap='viridis', origin='lower')
+# plt.colorbar(label='Amplitude (0 to 1)')
+# plt.title("Spectrogram (32 time steps, 128 frequency bins)")
+# plt.xlabel("Time Steps (32)")
+# plt.ylabel("Frequency Bins (128)")
+# plt.show()
 
-print(midi.shape)
+# print(midi.shape)
 
-plt.figure(figsize=(10*(32/49), 10))
-plt.imshow(midi, aspect='auto', cmap='viridis', origin='lower')
-plt.colorbar(label='Amplitude (0 to 1)')
-plt.title("MIDI (32 time steps, 49 MIDI Notes)")
-plt.ylabel("Time Steps (32)")
-plt.xlabel("MIDI Notes (49)")
-plt.show()
+# plt.figure(figsize=(10*(32/49), 10))
+# plt.imshow(midi, aspect='auto', cmap='viridis', origin='lower')
+# plt.colorbar(label='Amplitude (0 to 1)')
+# plt.title("MIDI (32 time steps, 49 MIDI Notes)")
+# plt.ylabel("Time Steps (32)")
+# plt.xlabel("MIDI Notes (49)")
+# plt.show()
 
 # Visualize random dataset item:
 # for spectrogram_batch, midi_batch in dataset.take(1):  # Unpack input and output, only use input here
@@ -126,34 +126,34 @@ plt.show()
 #     plt.xlabel("MIDI Notes (49)")
 #     plt.show()
 
-# # Model Structure:
-# input_layer = tf.keras.layers.Input(shape=(64, 128, 1))  # 32 time steps, 128 frequency bins, 1 channel
+# Model Structure:
+input_layer = tf.keras.layers.Input(shape=(64, 128, 1))  # 32 time steps, 128 frequency bins, 1 channel
 
-# cnn = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(input_layer)  # (None, 32, 128, 32)
-# cnn = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 16, 64, 32)
-# cnn = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(cnn)  # (None, 16, 64, 64)
-# cnn = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 8, 32, 64)
-# cnn_flattened = tf.keras.layers.Reshape((32, -1))(cnn)  # Flatten but maintain 32 time steps, shape becomes (None, 32, 2048)
+cnn = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(input_layer)  # (None, 32, 128, 32)
+cnn = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 16, 64, 32)
+cnn = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(cnn)  # (None, 16, 64, 64)
+cnn = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 8, 32, 64)
+cnn_flattened = tf.keras.layers.Reshape((32, -1))(cnn)  # Flatten but maintain 32 time steps, shape becomes (None, 32, 2048)
 
-# gru = tf.keras.layers.GRU(128, return_sequences=True)(cnn_flattened)  # Output shape: (None, 32, 128)
-# output_layer = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(49, activation='softmax'))(gru)  # (None, 32, 49)
+gru = tf.keras.layers.GRU(128, return_sequences=True)(cnn_flattened)  # Output shape: (None, 32, 128)
+output_layer = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(49, activation='softmax'))(gru)  # (None, 32, 49)
 
-# model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
-# model.compile(optimizer='adam', loss='categorical_crossentropy') # Output is onehot encoded classifications, so categorical crossentropy is most appropriate, or so I think
+model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
+model.compile(optimizer='adam', loss='categorical_crossentropy') # Output is onehot encoded classifications, so categorical crossentropy is most appropriate, or so I think
 
 
-# print(model.summary())
-# # for spectrogram_batch, labels_batch in dataset.take(1):
-# #     print(f"Input batch shape: {spectrogram_batch.shape}")
-# #     print(f"Label batch shape: {labels_batch.shape}")
+print(model.summary())
+# for spectrogram_batch, labels_batch in dataset.take(1):
+#     print(f"Input batch shape: {spectrogram_batch.shape}")
+#     print(f"Label batch shape: {labels_batch.shape}")
 
-# # Training parameters
-# epochs = 35  # Number of epochs to train the model
-# # steps_per_epoch = 80  # Number of batches per epoch (you can adjust this based on your dataset size)
+# Training parameters
+epochs = 35  # Number of epochs to train the model
+# steps_per_epoch = 80  # Number of batches per epoch (you can adjust this based on your dataset size)
 
-# # print(sum(1 for _ in tf.data.TFRecordDataset(dataset_path)))
+# print(sum(1 for _ in tf.data.TFRecordDataset(dataset_path)))
 
-# # Train the model
+# Train the model
 # history = model.fit(dataset, epochs=epochs)
 
 # model.save(os.path.join(current_dir, "model.keras"))
