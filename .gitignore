@@ -8,3 +8,4 @@ tf_venv
 3_8_packages.txt
 installed_packages.txt
 Python/Model Training/JS (the newest model)/training_logs
+Python/Model Training/JS (the newest model)/tensorboardVisualization.py
