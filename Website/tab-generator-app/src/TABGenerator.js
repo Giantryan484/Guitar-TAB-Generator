@@ -24,6 +24,10 @@ function TABGenerator() {
     const [tapTimes, setTapTimes] = useState([]);
     const [isOn, setIsOn] = useState(false);
     const [loadStatus, setLoadStatus] = useState(["Processing", ""]);
+    const [outputImageURL, setOutputImageURL] = useState('');
+    const [outputsSaved, setOutputsSaved] = useState(null);
+    const [threshold, setThreshold] = useState(0.10);
+    const [thresholdOutputImageURL, setThresholdOutputImageURL] = useState(null);
     const audioRef = useRef(null);
 
     useEffect(() => {
@@ -47,7 +51,7 @@ function TABGenerator() {
     // --- Spectrogram helper Functions (copied from ./Dataset Generation/tf_audio_processing.js) ---
 
     // creates length-64 slices of a given spectrogram array from an array of proportions that denote beats in the audio.
-    async function create_64th_note_slices_from_times_array(array, times, marking_type="quarter", audioDuration) {
+    async function create_64th_note_slices_from_times_array(array, times, marking_type = "quarter", audioDuration) {
         let new_array = [];
         let measure_lower_bound = 0;
         times.push(audioDuration); // adds end of audio as the end of a measure
@@ -65,7 +69,7 @@ function TABGenerator() {
             if (!measure_upper_bound) { // skip "undefined"s
                 continue;
             }
-            
+
             let seconds_per_64th_note = (measure_upper_bound - measure_lower_bound) / divisor;
             let current_time = measure_lower_bound;
 
@@ -98,7 +102,7 @@ function TABGenerator() {
                     for (let j = 0; j < array_slice.length; j++) {
                         sum += array_slice[j][i];
                     }
-                    let average_value = sum / array_slice.length; 
+                    let average_value = sum / array_slice.length;
                     avg_array_slice.push(average_value);
                 }
 
@@ -119,6 +123,7 @@ function TABGenerator() {
         const seconds_per_64th_note = seconds_per_beat / 16;
         let new_array = [];
         let current_time = 0;
+        // console.log("Duration, seconds per slice: ", audioDuration, seconds_per_64th_note)
 
         while (current_time < audioDuration) {
             let lower_bound = Math.floor((current_time / audioDuration) * array.length);
@@ -130,6 +135,8 @@ function TABGenerator() {
             }
 
             let array_slice = array.slice(lower_bound, upper_bound + 1);
+
+            // console.log("slice: ", current_time, array_slice);
 
             // If array_slice is empty (not sure when this will happen, but just in case), use the last available slice
             if (array_slice.length === 0) {
@@ -146,6 +153,8 @@ function TABGenerator() {
                 let average_value = sum / array_slice.length;
                 avg_array_slice.push(average_value);
             }
+
+            // console.log("slice, averaged: ", current_time, avg_array_slice);
 
             new_array.push(avg_array_slice);
             current_time += seconds_per_64th_note;
@@ -243,6 +252,13 @@ function TABGenerator() {
         return normalized_array;
     }
 
+    // round array values up to 1 based on a threshold
+    function thresholdArray(array, threshold) {
+        return array.map(row =>
+            row.map(value => value < threshold ? 0 : 1)
+        );
+    };
+
     // creates a link to a grayscale image from a 2D array of values 0-1
     async function generateImageFrom2DArray(array) {
         // This seems terribly inefficient, but whatever. 
@@ -306,7 +322,9 @@ function TABGenerator() {
         // const decodedData = await audio.decodeAudioData(arrayBuffer);
         // const channelData = decodedData.getChannelData(0);
         const audioTensor = tf.tensor1d(data);
-        const audioDuration = data.duration;
+        // const audioDuration = data.duration;
+        const audioDuration = audioRef.current.duration;
+        // console.log("raw audio data (duration, data): ", audioDuration, data);
 
         // Do the STFT
         const frameLength = 8192;
@@ -319,8 +337,12 @@ function TABGenerator() {
 
         const array = await logSpectrogram.array();
 
+        // console.log("inputs before log: ", array);
+
         // Prepares the spectrogram for input into the CNN
         const shortened_array = await reduce_height_logarithmically(array, 400);
+
+        // console.log("inputs after log: ", shortened_array);
 
         let array_64ths;
 
@@ -332,12 +354,22 @@ function TABGenerator() {
                 marking_type = "measure";
             }
             array_64ths = await create_64th_note_slices_from_times_array(shortened_array, tapTimes, marking_type, audioDuration);
+            // console.log("not bpm");
         } else {
             array_64ths = await create_64th_note_slices_from_bpm(shortened_array, bpm, audioDuration);
+            // console.log("bpm");
         }
 
+        // console.log("inputs after 64thed: ", array_64ths);
+
         const rounded_array = await roundUpArrayValues(array_64ths);
+
+        // console.log("inputs after rounding: ", rounded_array);
+
         const ML_array = await normalizeArray(rounded_array);
+
+        // console.log("inputs after all: ", ML_array);
+
 
         return ML_array
     }
@@ -412,6 +444,9 @@ function TABGenerator() {
         await setSubmissionStatus(false);
         await setTapTimes([]);
         await setExampleFile('');
+        await setOutputsSaved(null);
+        await setOutputImageURL('');
+
 
         const arrayBuffer = await fetchAudioAsArrayBuffer(audioRef.current.src);
         const audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -429,7 +464,7 @@ function TABGenerator() {
         try {
             const bpm = await estimateBPM(decodedData)
             setEstimatedBPM(bpm);
-            setBPM(bpm);    
+            setBPM(bpm);
         } catch {
             setEstimatedBPM("Unknown; Your audio may be too quiet.");
             setBPM(0);
@@ -457,16 +492,46 @@ function TABGenerator() {
     };
 
     const runMLModel = async (inputs) => {
-        const len = inputs.length;
+        let len = inputs.length;
         const master_outputs = [];
 
-        const model = await tf.loadLayersModel('/model.json');
-        console.log("Model loaded successfully.");
+        const model = await tf.loadLayersModel('/model/model.json');
+        // console.log("Model loaded successfully:", model.summary());
+        // console.log("inputs: ", inputs);
+
+        // convert inputs (long list of size 128 spectrogram slices) into ML_inputs (64x128 array of slices, model predicts next slice.)
+        function createSubArrays(bigArray, windowSize = 64) {
+            const subArrays = [];
+            const numRows = bigArray.length;
+
+            if (numRows < windowSize) {
+                throw new Error("The audio is less than a measure long. The model is unable to parse it.");
+            }
+
+            for (let i = 0; i <= numRows - windowSize; i++) {
+                const subArray = bigArray.slice(i, i + windowSize);
+                subArrays.push(subArray);
+            }
+
+            return subArrays;
+        }
+
+        // console.log("got here")
+        const ML_inputs = createSubArrays(inputs);
+        len = ML_inputs.length;
+
+        function flattenArray(array) {
+            return array.reduce((flattened, row) => flattened.concat(row), []);
+        }
+
+        // console.log("ML_inputs: ", ML_inputs);
 
         for (let i = 0; i < len; i++) {
-            setLoadStatus(["Running the Model", `Parsing slice ${i + 1}/${len}`]);
-            let input = inputs[i];
-            const tfInput = tf.tensor(input).reshape([64, 128, 1]);
+            await setLoadStatus(["Running the Model", `Parsing slice ${i + 1}/${len}`]);
+            await new Promise(resolve => setTimeout(resolve, 0)); // Yield control back to the event loop
+            let input = ML_inputs[i];
+            let flattened_input = flattenArray(input);
+            const tfInput = tf.tensor(flattened_input).reshape([1, 64, 128, 1]);
 
             const output = model.predict(tfInput);
             const outputArray = output.arraySync()[0];
@@ -475,8 +540,10 @@ function TABGenerator() {
             tfInput.dispose();
             output.dispose();
         }
-        const values = Array(64 + len - 1).fill(0).map(() => Array(49).fill(0));
-        const counts = Array(64 + len - 1).fill(0).map(() => Array(49).fill(0));
+        // console.log("master_outputs: ", master_outputs);
+
+        const values = Array(32 + len - 1).fill(0).map(() => Array(49).fill(0));
+        const counts = Array(32 + len - 1).fill(0).map(() => Array(49).fill(0));
 
         // aggregation
         for (let i = 0; i < master_outputs.length; i++) {
@@ -493,13 +560,20 @@ function TABGenerator() {
             row.map((val, j) => (counts[i][j] === 0 ? 0 : val / counts[i][j]))
         );
 
+        // console.log("final outputs: ", output);
+
         return output;
     };
 
     const handleSubmit = async () => {
         // iframeRef.current.src = null;
         await setSubmissionStatus(true);
-        
+        await setPdfUrl(null);
+        await setOutputImageURL('');
+        await setThresholdOutputImageURL('');
+        await setOutputsSaved(null);
+        await setThreshold(0.1);
+
         window.scrollTo({
             top: document.documentElement.scrollHeight,
             behavior: 'smooth',
@@ -513,16 +587,45 @@ function TABGenerator() {
 
         await console.log(tapTimes);
 
+        // console.log("original data", data);
+
         const inputs = await createSpectrogramInput(data, BPM); // requires bpm and spectrogram inputs
+        // console.log("original inputs", inputs);
 
-        setLoadStatus(["Running the Model", "Initializing..."]);
+        // setLoadStatus(["Running the Model", "Initializing..."]);
         const outputs = await runMLModel(inputs);
+        setOutputsSaved(outputs);
 
-        // post processing for outputs?
+        const outputTranposed = outputs[0].map((_, colIndex) => outputs.map(row => row[colIndex]));
+        const outputAmplified = outputTranposed.map((arr) => arr.map((item) => Math.sqrt(item)));
+        const outputReversed = outputAmplified.reverse();
+        const outputImage = await generateImageFrom2DArray(outputReversed);
+        setOutputImageURL(outputImage);
+
+        const thresholdOutputs = thresholdArray(outputs, 0.2);
+        const thresholdTransposed = thresholdOutputs[0].map((_, colIndex) => thresholdOutputs.map(row => row[colIndex]));
+        const thresholdReversed = thresholdTransposed.reverse();
+        const thresholdImage = await generateImageFrom2DArray(thresholdReversed);
+        setThresholdOutputImageURL(thresholdImage);
 
         setLoadStatus(["Optimizing TABs", "This may take a while..."]);
         const TABsURL = await processML_Outputs(outputs, fileName);
+        setPdfUrl(TABsURL);
+    }
 
+
+    const handleThresholdChange = async (e) => {
+        await setThreshold(e.target.value);
+        const thresholdOutputs = thresholdArray(outputsSaved, e.target.value);
+        const thresholdTransposed = thresholdOutputs[0].map((_, colIndex) => thresholdOutputs.map(row => row[colIndex]));
+        const thresholdReversed = thresholdTransposed.reverse();
+        const thresholdImage = await generateImageFrom2DArray(thresholdReversed);
+        setThresholdOutputImageURL(thresholdImage);
+    }
+
+    const handleThresholdRefresh = async () => {
+        const thresholdOutputs = thresholdArray(outputsSaved, threshold)
+        const TABsURL = await processML_Outputs(thresholdOutputs, fileName);
         setPdfUrl(TABsURL);
     }
 
@@ -530,8 +633,8 @@ function TABGenerator() {
     return (
         <div className='container'>
             <div className='center-column'>
-                <h1 className='title'>Guitar TAB Generator (THIS IS NOT COMPLETELY FUNCTIONAL, but you can try out everything until the actual TAB generation section.)</h1>
-                <p>Why is it not functional?: Tensorflowjs.converter is resulting in a corrupted model output when I try to convert my trained .keras model to a model.json, so I attempted to use an older version of python and tensorflow. But, upon installing tensorflow again, it said `zsh: illegal hardware instruction`, and now my entire python installation is corrupted, even when I remove all installed libraries. I need to rebuild everything from scratch, so for the next while I am in dependency hell. I guess this is what I get for not using virtual environments.</p>
+                <h1 className='title'>Guitar TAB Generator</h1>
+                <p>UPDATE 11/27/24: After over a month working on this thing, I finally got it working by rebuilding <i>everything</i> in javascript. Now, the entire site should work... but it's not very good right now. The current site uses a placeholder model trained on a very small dataset, and I need to redesign and retrain the model from scratch. In the meantime, you can use the current state of the website to get an idea of how the final product will operate.</p>
                 <p>This is an interactive demo that uses a Convolutional Neural Network to create playable TABS from audio of a solo guitar. Use it to learn your favorite guitar melodies!</p>
                 <img
                     src={"demo_image(1).png"}
@@ -611,13 +714,13 @@ function TABGenerator() {
                                 audioLoaded && (
                                     spectrogramUrl && (
                                         <div className='tempo-tapper-container'>
-                                            <TempoTapper 
-                                                spectrogramUrl={spectrogramUrl} 
-                                                file={file} 
-                                                audioRef={audioRef} 
+                                            <TempoTapper
+                                                spectrogramUrl={spectrogramUrl}
+                                                file={file}
+                                                audioRef={audioRef}
                                                 tapTimes={tapTimes}
                                                 setTapTimes={setTapTimes}
-                                                isOn={isOn} 
+                                                isOn={isOn}
                                                 setIsOn={setIsOn}
                                             />
                                             <button className='submitButton' onClick={handleSubmit}>Submit</button>
@@ -647,10 +750,71 @@ function TABGenerator() {
                 {submissionStatus && (
                     <div style={{ width: "100%" }}>
                         <hr />
-                        <div className='header'><h2>Generate TABs <Tooltip message={'The machine learning model is looking at measure-long slices and figuring out what notes are being played. Later, these notes are converted to TABs using an algorithm that minimizes distance between frets.'} /></h2></div>
+                        <div className='header'><h2>Run the Model <Tooltip message={'The machine learning model is looking at measure-long slices and figuring out what notes are being played.'} /></h2></div>
                         {!PdfUrl && (
                             <LoadingIcon message={loadStatus[0]} subMessage={loadStatus[1]} />
                         )}
+                        {outputImageURL && (
+                            //<iframe src={PdfUrl} width="100%" height="600px" title='pdf-display' /> // change to a "complete" message
+                            <div>
+                                {/* <p style={{textAlign: "center"}}>Complete:</p> */}
+                                <p style={{ textAlign: "center" }}>Model Output:</p>
+                                <div style={{ display: "flex", justifyContent: "center" }}>
+                                    <img
+                                        src={outputImageURL}
+                                        alt='A MIDI visualization of the output from the model'
+                                        style={{
+                                            width: "500px",
+                                            height: "200px"
+                                        }}
+                                    />
+                                </div>
+                                {/* <p style={{textAlign: "center"}}>Change threshold for TAB recognition:</p> */}
+                            </div>
+                        )}
+                    </div>
+                )}
+                {(outputsSaved && thresholdOutputImageURL) && (
+                    <div style={{ width: "100%" }}>
+                        <hr />
+                        <div className='header'><h2>Generate TABs <Tooltip message={'The notes detected by the CNN model are converted to TABs using an algorithm that minimizes distance between frets.'} /></h2></div>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                            <div className='tempo-area'>
+                                <div className='BPM-input-area'>
+                                    <label className='BPM-label'>Enter a Threshold:</label>
+                                    <input
+                                        type="number"
+                                        step="0.002"
+                                        value={threshold}
+                                        onChange={handleThresholdChange}
+                                        className='BPM-input'
+                                        min="0"
+                                        max="1"
+                                    />
+                                </div>                            </div>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                            <img
+                                src={thresholdOutputImageURL}
+                                alt='A MIDI visualization of the output from the model'
+                                style={{
+                                    width: "500px",
+                                    height: "200px",
+                                    padding: "10px"
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                            <button
+                                className='submitButton'
+                                onClick={handleThresholdRefresh}
+                                style={{
+                                    marginBottom: "20px"
+                                }}
+                            >
+                                Refresh PDF
+                            </button>
+                        </div>
                         {PdfUrl && (
                             <iframe src={PdfUrl} width="100%" height="600px" title='pdf-display' />
                         )}

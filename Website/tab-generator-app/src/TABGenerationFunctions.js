@@ -170,51 +170,65 @@ export function process_slices(midi_slices) {
 
     return output_tabs;
 }
-
 // Format and output TABs
 export function TABs_from_output(output) {
+    // Initialize an object to store TABs for each string
     const TABs = { "E": [], "A": [], "D": [], "G": [], "b": [], "e": [] };
 
+    // Populate the TABs object with positions and frets for each string
     output.forEach((notes_slice, i) => {
         notes_slice.forEach(sfret => {
-            const [string, fret] = String(sfret).split("|");;
+            const [string, fret] = String(sfret).split("|");
             TABs[string].push([i, fret]);
         });
     });
 
+    // Calculate the number of measures based on the output length
     const measures = Math.floor(output.length / 16) + 1;
+
+    // Initialize an object to store formatted TABs for each string
     const formatted_tabs = { "E": [], "A": [], "D": [], "G": [], "b": [], "e": [] };
 
+    // Iterate over each string to format the TABs
     Object.keys(TABs).forEach(string => {
         let current_measure = [];
+        // Loop over each position in the measures
         for (let i = 0; i < measures * 16; i++) {
+            // When a measure is complete (every 16 positions)
             if (i % 16 === 0 && current_measure.length > 0) {
-                formatted_tabs[string].push(current_measure.join('') + "-|-");
+                // Push the joined measure into formatted_tabs without extra symbols
+                formatted_tabs[string].push(current_measure.join(''));
                 current_measure = [];
             }
 
+            // Default to empty fret position
             let note_at_position = "--";
+            // Check if there's a note at the current position
             TABs[string].forEach(([pos, fret]) => {
                 if (pos === i) {
+                    // Adjust formatting for single or double-digit frets
                     note_at_position = fret.length === 2 ? fret : fret + "-";
                 }
             });
 
+            // Add the note or empty position to the current measure
             current_measure.push(note_at_position);
         }
 
+        // Push any remaining notes in the last measure
         if (current_measure.length > 0) {
-            formatted_tabs[string].push(current_measure.join('') + "-|");
+            formatted_tabs[string].push(current_measure.join(''));
         }
     });
 
     return formatted_tabs;
 }
 
-// New function to generate and export TABs to PDF
+
+
 export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_line = 3) {
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage();
+    let page = pdfDoc.addPage();
 
     const font = await pdfDoc.embedFont(StandardFonts.Courier);
     const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -251,8 +265,10 @@ export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_lin
 
         Object.keys(formatted_tabs).forEach(string => {
             for (let i = 0; i < formatted_tabs[string].length; i += measures_per_line) {
+                // Extract the measures for the current line
                 const slice = formatted_tabs[string].slice(i, i + measures_per_line);
-                split_tabs[string].push("|-" + slice.join(""));
+                // Join the measures with '|' between them
+                split_tabs[string].push(slice.join("|"));
             }
         });
 
@@ -264,7 +280,8 @@ export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_lin
     function drawTabLine(page, yPosition, split_tabs, font, tabFontSize) {
         const strings = ["e", "b", "G", "D", "A", "E"];
         strings.forEach(string => {
-            page.drawText(string + "|-" + split_tabs[string].shift(), {
+            // Draw the TAB line with the correct formatting
+            page.drawText(string + "|" + split_tabs[string].shift() + "|", {
                 x: margin,
                 y: yPosition,
                 size: tabFontSize,
@@ -276,10 +293,15 @@ export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_lin
         return yPosition;
     }
 
+
     while (split_tabs["E"].length > 0) {
         yPosition = drawTabLine(page, yPosition, split_tabs, font, tabFontSize);
 
-        if (yPosition < margin) {
+        // Add a blank line after each set of TAB lines
+        yPosition -= lineHeight;
+
+        // Check if there's enough space for the next set of TAB lines
+        if (yPosition < margin + lineHeight * 6) {
             page = pdfDoc.addPage();
             yPosition = height - topMargin;
         }
@@ -288,6 +310,7 @@ export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_lin
     const pdfBytes = await pdfDoc.save();
     return pdfBytes;
 }
+
 
 // export function displayPDFInIframe(pdfBytes) {
 //     const blob = new Blob([pdfBytes], { type: "application/pdf" });
@@ -301,9 +324,11 @@ export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_lin
 // }
 
 export async function processML_Outputs(midiArray, title) {
-    const sfrets_output = process_slices(midiArray)
+    const sfrets_output = process_slices(midiArray);
+    console.log("output 1: ", sfrets_output);
     const formatted_tabs = TABs_from_output(sfrets_output);
-    const pdfBytes = await export_TABs_to_pdf(formatted_tabs, title, 3);  // 3 is the default measures_per_line
+    console.log("output 2: ", formatted_tabs);
+    const pdfBytes = await export_TABs_to_pdf(formatted_tabs, title, 2);
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
     const pdfUrl = URL.createObjectURL(blob);
 

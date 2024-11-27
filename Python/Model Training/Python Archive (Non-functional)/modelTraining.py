@@ -1,9 +1,10 @@
 import tensorflow as tf
+import keras
 import os
-import matplotlib.pyplot as plt
-import json
-import random
-import numpy as np
+# import matplotlib.pyplot as plt
+# import json
+# import random
+# import numpy as np
 
 def parse_tfrecord_fn(example):
     feature_description = {
@@ -54,7 +55,7 @@ def augment_data(inputs, labels):
     inputs = add_random_hum(inputs, hum_strength=0.02, hum_prob=0.1)
     return inputs, labels
 
-# current_dir = os.path.dirname(os.path.abspath(__file__))
+current_dir = os.path.dirname(os.path.abspath(__file__))
 # parent_dir = os.path.dirname(current_dir)
 # data_path = os.path.join(parent_dir, "Data")
 # dataset_path = os.path.join(data_path, "dataset.tfrecord")
@@ -127,18 +128,20 @@ def augment_data(inputs, labels):
 #     plt.show()
 
 # Model Structure:
-input_layer = tf.keras.layers.Input(shape=(64, 128, 1))  # 32 time steps, 128 frequency bins, 1 channel
+keras.backend.clear_session()
 
-cnn = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(input_layer)  # (None, 32, 128, 32)
-cnn = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 16, 64, 32)
-cnn = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(cnn)  # (None, 16, 64, 64)
-cnn = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 8, 32, 64)
-cnn_flattened = tf.keras.layers.Reshape((32, -1))(cnn)  # Flatten but maintain 32 time steps, shape becomes (None, 32, 2048)
+input_layer = keras.layers.Input(shape=(64, 128, 1))  # 32 time steps, 128 frequency bins, 1 channel
 
-gru = tf.keras.layers.GRU(128, return_sequences=True)(cnn_flattened)  # Output shape: (None, 32, 128)
-output_layer = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(49, activation='softmax'))(gru)  # (None, 32, 49)
+cnn = keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(input_layer)  # (None, 32, 128, 32)
+cnn = keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 16, 64, 32)
+cnn = keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(cnn)  # (None, 16, 64, 64)
+cnn = keras.layers.MaxPooling2D(pool_size=(2, 2))(cnn)  # (None, 8, 32, 64)
+cnn_flattened = keras.layers.Reshape((32, -1))(cnn)  # Flatten but maintain 32 time steps, shape becomes (None, 32, 2048)
 
-model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
+gru = keras.layers.GRU(128, return_sequences=True)(cnn_flattened)  # Output shape: (None, 32, 128)
+output_layer = keras.layers.TimeDistributed(tf.keras.layers.Dense(49, activation='softmax'))(gru)  # (None, 32, 49)
+
+model = keras.Model(inputs=input_layer, outputs=output_layer)
 model.compile(optimizer='adam', loss='categorical_crossentropy') # Output is onehot encoded classifications, so categorical crossentropy is most appropriate, or so I think
 
 
@@ -156,4 +159,4 @@ epochs = 35  # Number of epochs to train the model
 # Train the model
 # history = model.fit(dataset, epochs=epochs)
 
-# model.save(os.path.join(current_dir, "model.keras"))
+model.save(os.path.join(current_dir, "model_blank.keras"))

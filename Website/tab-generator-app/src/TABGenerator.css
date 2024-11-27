@@ -22,6 +22,7 @@
 .title {
     text-align: center;
     margin: 20px 0px;
+    margin-bottom: 0px;
 }
 
 .header {
@@ -183,4 +184,9 @@ hr {
     border-top: 2px solid rgb(78, 78, 78);
     width: 100%;
     margin: 20px auto;
+}
+
+iframe {
+    color: black;
+    border: 1px solid black;
 }
