@@ -823,7 +823,7 @@ function TABGenerator() {
                             <iframe src={PdfUrl} width="100%" height="600px" title='pdf-display' />
                         )}
                         {refreshingPDF && (
-                            <LoadingIcon message={"Optimizing TABs"} subMessage={"If the threshold is very low, this can use up all your system's memory and never complete. Oops. Want to fix it? Submit a pull request for the TABGeneratioNFunctions.js file!"} />
+                            <LoadingIcon message={"Optimizing TABs"} subMessage={"If the threshold is very low, this can use up all your system's memory and never complete. Oops. Want to fix it? Submit a pull request for the TABGenerationFunctions.js file!"} />
                         )}
                     </div>
                 )}
