@@ -126,12 +126,13 @@ export function get_center(sfret_list) {
 }
 
 // Process slices of MIDI data
-export function process_slices(midi_slices) {
+export async function process_slices(midi_slices) {
     let prev_center = 0;
     const output_tabs = [];
-    const old_slices = midi_slices;
+    // const old_slices = midi_slices;
 
     for (let slice_idx = 0; slice_idx < midi_slices.length; slice_idx += 2) {
+        await new Promise(resolve => setTimeout(resolve, 0));
         const current_slice = midi_slices[slice_idx];
         const notes_being_pressed = current_slice.map((val, i) => (typeof val !== 'string' && val > 0.5) ? midi_to_note[i] : null).filter(Boolean);
         const existing_fingerings = current_slice.filter(val => typeof val === 'string');
@@ -236,6 +237,7 @@ export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_lin
     const titleFontSize = 20;
     const tabFontSize = 12;
 
+    // eslint-disable-next-line
     const { width, height } = page.getSize();
     const margin = 50;
     const topMargin = 50;
@@ -324,10 +326,10 @@ export async function export_TABs_to_pdf(formatted_tabs, title, measures_per_lin
 // }
 
 export async function processML_Outputs(midiArray, title) {
-    const sfrets_output = process_slices(midiArray);
-    console.log("output 1: ", sfrets_output);
+    const sfrets_output = await process_slices(midiArray);
+    // console.log("output 1: ", sfrets_output);
     const formatted_tabs = TABs_from_output(sfrets_output);
-    console.log("output 2: ", formatted_tabs);
+    // console.log("output 2: ", formatted_tabs);
     const pdfBytes = await export_TABs_to_pdf(formatted_tabs, title, 2);
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
     const pdfUrl = URL.createObjectURL(blob);

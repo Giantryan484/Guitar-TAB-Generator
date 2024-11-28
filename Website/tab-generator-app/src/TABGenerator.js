@@ -28,6 +28,7 @@ function TABGenerator() {
     const [outputsSaved, setOutputsSaved] = useState(null);
     const [threshold, setThreshold] = useState(0.10);
     const [thresholdOutputImageURL, setThresholdOutputImageURL] = useState(null);
+    const [refreshingPDF, setRefreshingPDF] = useState(false);
     const audioRef = useRef(null);
 
     useEffect(() => {
@@ -38,6 +39,7 @@ function TABGenerator() {
             console.log(exampleFile, "/" + exampleFile);
             handleUpload();
         }
+    // eslint-disable-next-line
     }, [exampleFile]);
 
     const handleFileChange = (event) => {
@@ -602,17 +604,17 @@ function TABGenerator() {
         const outputImage = await generateImageFrom2DArray(outputReversed);
         setOutputImageURL(outputImage);
 
-        const thresholdOutputs = thresholdArray(outputs, 0.2);
+        const thresholdOutputs = thresholdArray(outputs, 0.1);
         const thresholdTransposed = thresholdOutputs[0].map((_, colIndex) => thresholdOutputs.map(row => row[colIndex]));
         const thresholdReversed = thresholdTransposed.reverse();
         const thresholdImage = await generateImageFrom2DArray(thresholdReversed);
         setThresholdOutputImageURL(thresholdImage);
 
-        setLoadStatus(["Optimizing TABs", "This may take a while..."]);
-        const TABsURL = await processML_Outputs(outputs, fileName);
+        // setLoadStatus(["Optimizing TABs", "This may take a while..."]);
+
+        const TABsURL = await processML_Outputs(thresholdOutputs, fileName);
         setPdfUrl(TABsURL);
     }
-
 
     const handleThresholdChange = async (e) => {
         await setThreshold(e.target.value);
@@ -624,9 +626,11 @@ function TABGenerator() {
     }
 
     const handleThresholdRefresh = async () => {
+        await setRefreshingPDF(true);
         const thresholdOutputs = thresholdArray(outputsSaved, threshold)
         const TABsURL = await processML_Outputs(thresholdOutputs, fileName);
         setPdfUrl(TABsURL);
+        setRefreshingPDF(false);
     }
 
 
@@ -815,8 +819,11 @@ function TABGenerator() {
                                 Refresh PDF
                             </button>
                         </div>
-                        {PdfUrl && (
+                        {(PdfUrl && !refreshingPDF) && (
                             <iframe src={PdfUrl} width="100%" height="600px" title='pdf-display' />
+                        )}
+                        {refreshingPDF && (
+                            <LoadingIcon message={"Optimizing TABs"} subMessage={"If the threshold is very low, this can use up all your system's memory and never complete. Oops. Want to fix it? Submit a pull request for the TABGeneratioNFunctions.js file!"} />
                         )}
                     </div>
                 )}
