@@ -6,7 +6,7 @@
     <img src="Website/tab-generator-app/public/demo_image(1).png" alt="Image of audio file being converted into TABs"/>
     <br/>
     The website is live at <a href="https://tabgenerator.app/">tabgenerator.app</a>, running entirely in your browser. 
-    <br/>NOTICE: currently this website is non-functional because of an unforseen error. It may be a while before this is fully functional.
+    <br/>NOTICE: currently this website uses a placeholder model because of an unforseen error. It may be a while before it works perfectly.
 </div>
 
 ## About the repository
